@@ -87,18 +87,45 @@ def get_session(chat_id: int) -> dict:
 
 # ========= NHẬN DIỆN INTENT & PROFILE =========
 
+# Bảng ưu tiên intent (có thể đồng bộ với field priority trong JSON)
+INTENT_PRIORITY_DEFAULT = 10  # fallback
+
+def get_intent_priority(intent: str) -> int:
+    for rule in SYMPTOM_RULES:
+        if rule.get("intent") == intent:
+            return int(rule.get("priority", INTENT_PRIORITY_DEFAULT))
+    return INTENT_PRIORITY_DEFAULT
+
+
 def detect_intent_from_text(text: str) -> str | None:
+    """
+    Phát hiện intent dựa trên bảng symptoms_mapping.json.
+    - Mỗi từ khóa khớp +1 điểm.
+    - Điểm cuối = matches * 10 + priority (ưu tiên huyết áp, tiểu đường, gan... cao hơn).
+    - Trả về intent có điểm cao nhất nếu có ít nhất 1 từ khóa khớp.
+    """
     t = text.lower()
     best_intent = None
     best_score = 0
+
     for rule in SYMPTOM_RULES:
-        score = 0
-        for kw in rule.get("keywords", []):
-            if kw.lower() in t:
-                score += 1
-        if score > best_score and score > 0:
-            best_score = score
-            best_intent = rule.get("intent")
+        intent = rule.get("intent")
+        kws = rule.get("keywords", [])
+        matches = 0
+        for kw in kws:
+            kw_l = kw.lower().strip()
+            if not kw_l:
+                continue
+            if kw_l in t:
+                matches += 1
+
+        if matches > 0:
+            priority = get_intent_priority(intent)
+            score = matches * 10 + priority  # nhân trọng số + ưu tiên
+            if score > best_score:
+                best_score = score
+                best_intent = intent
+
     return best_intent
 
 def choose_combo(intent: str | None) -> dict | None:
@@ -315,8 +342,9 @@ def webhook():
         return "ok", 200
 
     # ----- XÁC ĐỊNH / GIỮ INTENT -----
-    if session.get("intent") is None:
-        session["intent"] = detect_intent_from_text(text_stripped)
+    new_intent = detect_intent_from_text(text_stripped)
+    if new_intent:
+        session["intent"] = new_intent
 
     intent = session.get("intent")
     combo = choose_combo(intent)
@@ -329,3 +357,4 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
