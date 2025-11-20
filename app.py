@@ -71,7 +71,7 @@ def webhook():
     # Gọi OpenAI ChatGPT
     try:
         completion = client.chat.completions.create(
-            model="gpt-5.1-mini",  # hoặc gpt-5.1 tuỳ ngân sách :contentReference[oaicite:4]{index=4}
+            model="gpt-4o-mini",  # hoặc gpt-5.1 tuỳ ngân sách :contentReference[oaicite:4]{index=4}
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
@@ -94,3 +94,4 @@ def webhook():
 if __name__ == "__main__":
     # Chạy local để test, khi deploy Render sẽ không dùng đoạn này
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
