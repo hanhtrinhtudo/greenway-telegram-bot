@@ -60,7 +60,23 @@
       "COMBO HUYẾT ÁP - TIM MẠCH",
       "COMBO SUY TĨNH MẠCH"
     ]
-  },
+  }{
+  "intent": "blood_pressure",
+  "title": "Huyết áp, tim mạch",
+  "keywords": [
+    "huyết áp",
+    "cao huyết áp",
+    "tăng huyết áp",
+    "áp cao",
+    "ha cao",
+    "tim mạch",
+    "động mạch vành"
+  ],
+  "preferred_combos": [
+    "COMBO HUYẾT ÁP - TIM MẠCH",
+    "COMBO SUY TĨNH MẠCH"
+  ]
+},
   {
     "intent": "respiratory",
     "title": "Ho, cảm cúm, hô hấp",
@@ -90,3 +106,4 @@
     ]
   }
 ]
+
