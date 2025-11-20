@@ -1,0 +1,92 @@
+[
+  {
+    "intent": "weight_loss",
+    "title": "Giảm cân, thừa cân, béo phì",
+    "keywords": ["thừa cân", "béo phì", "giảm cân", "mỡ bụng", "mỡ nội tạng", "giảm mỡ"],
+    "preferred_combos": [
+      "COMBO THỪA CÂN - BÉO PHÌ",
+      "COMBO  GIẢM MỠ NỘI TẠNG",
+      "THẢI ĐỘC - GIẢM MỠ - NGỪA UNG THƯ"
+    ]
+  },
+  {
+    "intent": "detox",
+    "title": "Thải độc, làm sạch cơ thể",
+    "keywords": ["thải độc", "giải độc", "thanh lọc", "giải độc gan"],
+    "preferred_combos": [
+      "THẢI ĐỘC - GIẢM MỠ - NGỪA UNG THƯ",
+      "COMBO CẢI THIỆN CHỨC NĂNG GAN"
+    ]
+  },
+  {
+    "intent": "sleep",
+    "title": "Mất ngủ, căng thẳng, trầm cảm nhẹ",
+    "keywords": ["mất ngủ", "khó ngủ", "ngủ không sâu", "trầm cảm", "căng thẳng", "stress"],
+    "preferred_combos": [
+      "COMBO GIẢM MẤT NGỦ - TRẦM CẢM"
+    ]
+  },
+  {
+    "intent": "digestive",
+    "title": "Đầy bụng, khó tiêu, táo bón, tiêu hóa kém",
+    "keywords": ["đầy bụng", "khó tiêu", "táo bón", "tiêu hóa kém", "bụng cồn cào"],
+    "preferred_combos": [
+      "COMBO CẢI THIỆN HỆ TIÊU HÓA",
+      "COMBO TIÊU HÓA - TRẺ EM"
+    ]
+  },
+  {
+    "intent": "liver",
+    "title": "Gan, mỡ máu, men gan",
+    "keywords": ["gan", "mỡ máu", "cholesterol", "men gan"],
+    "preferred_combos": [
+      "COMBO CẢI THIỆN CHỨC NĂNG GAN",
+      "THẢI ĐỘC - GIẢM MỠ - NGỪA UNG THƯ"
+    ]
+  },
+  {
+    "intent": "diabetes",
+    "title": "Tiểu đường, đường huyết",
+    "keywords": ["tiểu đường", "đường huyết cao", "đái tháo đường"],
+    "preferred_combos": [
+      "COMBO TIỂU ĐƯỜNG"
+    ]
+  },
+  {
+    "intent": "blood_pressure",
+    "title": "Huyết áp, tim mạch",
+    "keywords": ["huyết áp", "tim mạch", "động mạch vành"],
+    "preferred_combos": [
+      "COMBO HUYẾT ÁP - TIM MẠCH",
+      "COMBO SUY TĨNH MẠCH"
+    ]
+  },
+  {
+    "intent": "respiratory",
+    "title": "Ho, cảm cúm, hô hấp",
+    "keywords": ["ho", "cảm cúm", "sổ mũi", "hô hấp", "viêm phế quản", "khó thở"],
+    "preferred_combos": [
+      "COMBO CẢI THIỆN HỆ HÔ HẤP",
+      "COMBO HÔ HẤP - TRẺ EM",
+      "COMBO CẢM CÚM - SỔ MŨI"
+    ]
+  },
+  {
+    "intent": "kidney",
+    "title": "Thận, tiết niệu",
+    "keywords": ["sỏi thận", "tiết niệu", "tiểu buốt", "tiểu rắt"],
+    "preferred_combos": [
+      "COMBO THẬN - TIẾT NIỆU"
+    ]
+  },
+  {
+    "intent": "beauty",
+    "title": "Da, tóc, vóc dáng",
+    "keywords": ["sáng da", "đẹp da", "mụn", "nám", "rụng tóc", "da xấu"],
+    "preferred_combos": [
+      "COMBO SÁNG DA - DÁNG ĐẸP - EO THON",
+      "COMBO GIẢM RỤNG - KÍCH THÍCH MỌC TÓC",
+      "COMBO CHO MẮT"
+    ]
+  }
+]

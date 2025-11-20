@@ -1,0 +1,17 @@
+[
+  {
+    "id": "obj_price_high",
+    "keywords_any": ["giá cao", "đắt quá", "mắc quá", "sao đắt vậy", "rẻ hơn không"],
+    "answer": "Em hiểu cảm giác của anh/chị khi so sánh giá giữa các sản phẩm khác nhau.\n\nĐiểm khác biệt của các combo WELLLAB là tập trung vào liệu trình và hiệu quả lâu dài: sản phẩm được thiết kế để hỗ trợ cơ thể theo từng giai đoạn, không chỉ xử lý triệu chứng trước mắt. Anh/chị có thể cân nhắc:\n- Bắt đầu với liệu trình tối thiểu trước (1 tháng) để cảm nhận.\n- Sau đó nếu phù hợp, mình mới nâng lên liệu trình dài hơn.\n\nNếu anh/chị chia sẻ thêm về khả năng chi trả, em có thể gợi ý phương án phù hợp hơn trong cùng nhóm mục tiêu sức khỏe."
+  },
+  {
+    "id": "obj_not_trust",
+    "keywords_any": ["không tin", "không tin lắm", "sợ lừa", "chưa yên tâm", "thấy nhiều bên nói hay"],
+    "answer": "Tâm lý chưa yên tâm là rất bình thường, vì hiện nay có nhiều nơi quảng cáo quá mức.\n\nEm khuyến khích anh/chị:\n- Tìm hiểu kỹ thông tin nguồn gốc sản phẩm, đơn vị phân phối, chính sách đổi trả.\n- Trao đổi rõ ràng với tư vấn viên về liệu trình, chi phí và kỳ vọng kết quả.\n\nNếu cần, anh/chị có thể bắt đầu bằng liệu trình ngắn hoặc gói cơ bản trước, vừa để trải nghiệm, vừa để kiểm chứng mức độ phù hợp với cơ thể."
+  },
+  {
+    "id": "obj_tried_many",
+    "keywords_any": ["uống nhiều nơi", "dùng nhiều rồi", "không thấy hiệu quả", "thất vọng nhiều lần"],
+    "answer": "Em rất hiểu cảm giác mệt mỏi khi đã thử nhiều sản phẩm mà chưa đạt kết quả như mong muốn.\n\nVới mỗi trường hợp, ngoài sản phẩm, còn phụ thuộc rất nhiều vào: chế độ ăn uống, giấc ngủ, vận động, bệnh nền đi kèm và thời gian bám theo liệu trình. Khi tư vấn, bên em luôn cố gắng đánh giá tổng thể để đưa ra lộ trình phù hợp, không hứa hẹn quá mức.\n\nNếu anh/chị chia sẻ cụ thể hơn tình trạng hiện tại, những sản phẩm đã dùng và thời gian dùng, em sẽ cố gắng gợi ý giải pháp thực tế và phù hợp nhất."
+  }
+]

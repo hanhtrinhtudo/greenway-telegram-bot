@@ -1,0 +1,32 @@
+[
+  {
+    "id": "faq_how_to_order",
+    "keywords_any": ["mua hàng", "đặt hàng", "mua ở đâu", "đặt ở đâu", "cách mua"],
+    "answer": "Hiện tại anh/chị có thể đặt hàng qua các kênh chính của công ty:\n\n- Gọi trực tiếp Hotline (số điện thoại ghi trên tờ rơi/tài liệu hoặc trong phần giới thiệu kênh).\n- Nhắn tin cho Fanpage chính thức của công ty.\n- Đặt hàng qua website/đường link bán hàng mà nhân viên cung cấp.\n\nKhi đặt hàng, anh/chị chỉ cần để lại họ tên, số điện thoại, địa chỉ nhận hàng và sản phẩm muốn mua, bên em sẽ hỗ trợ chi tiết."
+  },
+  {
+    "id": "faq_payment",
+    "keywords_any": ["thanh toán", "trả tiền", "ship cod", "cod không", "trả sau"],
+    "answer": "Về hình thức thanh toán, thông thường bên em hỗ trợ thanh toán khi nhận hàng (COD) hoặc chuyển khoản theo hướng dẫn của nhân viên tư vấn.\n\nKhi đặt hàng, anh/chị vui lòng xác nhận rõ hình thức thanh toán với tư vấn viên để được hướng dẫn chi tiết và an toàn nhất."
+  },
+  {
+    "id": "faq_how_long_effect",
+    "keywords_any": ["bao lâu", "bao lâu có hiệu quả", "bao lâu thì có hiệu quả", "bao lâu có kết quả", "khi nào có hiệu quả"],
+    "answer": "Thực phẩm bảo vệ sức khỏe WELLLAB thường không cho hiệu quả tức thì như thuốc đặc trị. Liệu trình chuẩn thường được khuyến nghị từ 1–3 tháng, một số trường hợp cần duy trì 3–6 tháng để tối ưu.\n\nThời gian cảm nhận còn tùy cơ địa, chế độ ăn uống và sinh hoạt của mỗi người. Anh/chị nên dùng đều đặn, kết hợp ăn uống lành mạnh và vận động hợp lý để đạt kết quả tốt."
+  },
+  {
+    "id": "faq_who_can_use",
+    "keywords_any": ["ai dùng được", "đối tượng sử dụng", "dùng cho ai", "trẻ em dùng được không", "người già dùng được không"],
+    "answer": "Mỗi combo/sản phẩm WELLLAB sẽ có đối tượng khuyến nghị khác nhau (người lớn, trẻ em, người cao tuổi...). Khi tư vấn cụ thể, bên em luôn dựa vào tuổi, giới tính và tình trạng sức khỏe hiện tại của anh/chị.\n\nNếu anh/chị đang mang thai, cho con bú, có bệnh nền hoặc đang dùng thuốc tây, nên thông báo rõ cho tư vấn viên để được hướng dẫn phù hợp và luôn được khuyến nghị tham khảo ý kiến bác sĩ/chuyên gia trước khi dùng."
+  },
+  {
+    "id": "faq_is_medicine",
+    "keywords_any": ["thuốc hay thực phẩm chức năng", "có phải thuốc không", "tpcn", "thực phẩm bảo vệ sức khỏe"],
+    "answer": "Các sản phẩm WELLLAB là *thực phẩm bảo vệ sức khỏe*, không phải là thuốc và không có tác dụng thay thế thuốc chữa bệnh.\n\nVai trò chính là hỗ trợ, bổ sung, cải thiện và duy trì sức khỏe. Nếu anh/chị đang điều trị bằng thuốc hoặc có bệnh lý cụ thể, vẫn cần tuân thủ phác đồ của bác sĩ và nên tham khảo ý kiến bác sĩ/chuyên gia trước khi dùng."
+  },
+  {
+    "id": "faq_side_effect",
+    "keywords_any": ["tác dụng phụ", "phản ứng phụ", "có hại không", "an toàn không"],
+    "answer": "Các sản phẩm WELLLAB được thiết kế với mục tiêu hỗ trợ sức khỏe, tuy nhiên vẫn có thể có những trường hợp không phù hợp hoặc nhạy cảm với một số thành phần.\n\nNếu trong quá trình sử dụng thấy cơ thể có biểu hiện bất thường, anh/chị nên dừng lại và liên hệ với tư vấn viên hoặc cơ sở y tế gần nhất để được kiểm tra. Để an toàn hơn, trước khi dùng anh/chị nên đọc kỹ thông tin sản phẩm và tham khảo ý kiến bác sĩ/chuyên gia nếu có bệnh nền."
+  }
+]
