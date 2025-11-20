@@ -1,86 +1,108 @@
 [
   {
-    "intent": "weight_loss",
-    "title": "Giảm cân, thừa cân, béo phì",
-    "keywords": ["thừa cân", "béo phì", "giảm cân", "mỡ bụng", "mỡ nội tạng", "giảm mỡ"],
+    "intent": "blood_pressure",
+    "title": "Huyết áp, tim mạch",
+    "priority": 100,
+    "keywords": [
+      "cao huyết áp",
+      "tăng huyết áp",
+      "huyết áp cao",
+      "ha cao",
+      "áp cao",
+      "huyet ap",
+      "tim mạch",
+      "tim mach",
+      "động mạch vành",
+      "dong mach vanh"
+    ],
     "preferred_combos": [
-      "COMBO THỪA CÂN - BÉO PHÌ",
-      "COMBO  GIẢM MỠ NỘI TẠNG",
-      "THẢI ĐỘC - GIẢM MỠ - NGỪA UNG THƯ"
+      "COMBO HUYẾT ÁP - TIM MẠCH",
+      "COMBO SUY TĨNH MẠCH"
     ]
   },
   {
-    "intent": "detox",
-    "title": "Thải độc, làm sạch cơ thể",
-    "keywords": ["thải độc", "giải độc", "thanh lọc", "giải độc gan"],
+    "intent": "diabetes",
+    "title": "Tiểu đường, đường huyết",
+    "priority": 90,
+    "keywords": [
+      "tiểu đường",
+      "tieu duong",
+      "đái tháo đường",
+      "dai thao duong",
+      "đường huyết cao",
+      "duong huyet cao",
+      "đường trong máu",
+      "duong trong mau"
+    ],
     "preferred_combos": [
-      "THẢI ĐỘC - GIẢM MỠ - NGỪA UNG THƯ",
-      "COMBO CẢI THIỆN CHỨC NĂNG GAN"
-    ]
-  },
-  {
-    "intent": "sleep",
-    "title": "Mất ngủ, căng thẳng, trầm cảm nhẹ",
-    "keywords": ["mất ngủ", "khó ngủ", "ngủ không sâu", "trầm cảm", "căng thẳng", "stress"],
-    "preferred_combos": [
-      "COMBO GIẢM MẤT NGỦ - TRẦM CẢM"
-    ]
-  },
-  {
-    "intent": "digestive",
-    "title": "Đầy bụng, khó tiêu, táo bón, tiêu hóa kém",
-    "keywords": ["đầy bụng", "khó tiêu", "táo bón", "tiêu hóa kém", "bụng cồn cào"],
-    "preferred_combos": [
-      "COMBO CẢI THIỆN HỆ TIÊU HÓA",
-      "COMBO TIÊU HÓA - TRẺ EM"
+      "COMBO TIỂU ĐƯỜNG"
     ]
   },
   {
     "intent": "liver",
     "title": "Gan, mỡ máu, men gan",
-    "keywords": ["gan", "mỡ máu", "cholesterol", "men gan"],
+    "priority": 80,
+    "keywords": [
+      "gan",
+      "gan nhiễm mỡ",
+      "gan nhiem mo",
+      "men gan",
+      "mỡ máu",
+      "mo mau",
+      "cholesterol",
+      "mỡ gan",
+      "mo gan"
+    ],
     "preferred_combos": [
       "COMBO CẢI THIỆN CHỨC NĂNG GAN",
       "THẢI ĐỘC - GIẢM MỠ - NGỪA UNG THƯ"
     ]
   },
   {
-    "intent": "diabetes",
-    "title": "Tiểu đường, đường huyết",
-    "keywords": ["tiểu đường", "đường huyết cao", "đái tháo đường"],
+    "intent": "kidney",
+    "title": "Thận, tiết niệu",
+    "priority": 75,
+    "keywords": [
+      "sỏi thận",
+      "soi than",
+      "bệnh thận",
+      "benh than",
+      "suy thận",
+      "suy than",
+      "tiết niệu",
+      "tiet nieu",
+      "tiểu buốt",
+      "tieu buot",
+      "tiểu rắt",
+      "tieu rat"
+    ],
     "preferred_combos": [
-      "COMBO TIỂU ĐƯỜNG"
+      "COMBO THẬN - TIẾT NIỆU"
     ]
   },
   {
-    "intent": "blood_pressure",
-    "title": "Huyết áp, tim mạch",
-    "keywords": ["huyết áp", "tim mạch", "động mạch vành"],
-    "preferred_combos": [
-      "COMBO HUYẾT ÁP - TIM MẠCH",
-      "COMBO SUY TĨNH MẠCH"
-    ]
-  }{
-  "intent": "blood_pressure",
-  "title": "Huyết áp, tim mạch",
-  "keywords": [
-    "huyết áp",
-    "cao huyết áp",
-    "tăng huyết áp",
-    "áp cao",
-    "ha cao",
-    "tim mạch",
-    "động mạch vành"
-  ],
-  "preferred_combos": [
-    "COMBO HUYẾT ÁP - TIM MẠCH",
-    "COMBO SUY TĨNH MẠCH"
-  ]
-},
-  {
     "intent": "respiratory",
     "title": "Ho, cảm cúm, hô hấp",
-    "keywords": ["ho", "cảm cúm", "sổ mũi", "hô hấp", "viêm phế quản", "khó thở"],
+    "priority": 70,
+    "keywords": [
+      "ho",
+      "ho nhiều",
+      "ho dai",
+      "viêm phế quản",
+      "viem phe quan",
+      "khó thở",
+      "kho tho",
+      "cảm cúm",
+      "cam cum",
+      "sổ mũi",
+      "so mui",
+      "viêm mũi",
+      "viem mui",
+      "viêm đường hô hấp",
+      "viem duong ho hap",
+      "phổi",
+      "phoi"
+    ],
     "preferred_combos": [
       "COMBO CẢI THIỆN HỆ HÔ HẤP",
       "COMBO HÔ HẤP - TRẺ EM",
@@ -88,22 +110,238 @@
     ]
   },
   {
-    "intent": "kidney",
-    "title": "Thận, tiết niệu",
-    "keywords": ["sỏi thận", "tiết niệu", "tiểu buốt", "tiểu rắt"],
+    "intent": "digestive",
+    "title": "Đầy bụng, khó tiêu, táo bón, tiêu hóa kém",
+    "priority": 60,
+    "keywords": [
+      "đầy bụng",
+      "day bung",
+      "chướng bụng",
+      "chuong bung",
+      "khó tiêu",
+      "kho tieu",
+      "ăn không tiêu",
+      "an khong tieu",
+      "táo bón",
+      "tao bon",
+      "tiêu chảy",
+      "tieu chay",
+      "rối loạn tiêu hóa",
+      "roi loan tieu hoa",
+      "đau dạ dày",
+      "dau da day",
+      "viêm dạ dày",
+      "viem da day"
+    ],
     "preferred_combos": [
-      "COMBO THẬN - TIẾT NIỆU"
+      "COMBO CẢI THIỆN HỆ TIÊU HÓA",
+      "COMBO TIÊU HÓA - TRẺ EM"
+    ]
+  },
+  {
+    "intent": "weight_loss",
+    "title": "Giảm cân, thừa cân, béo phì",
+    "priority": 50,
+    "keywords": [
+      "thừa cân",
+      "thua can",
+      "béo phì",
+      "beo phi",
+      "giảm cân",
+      "giam can",
+      "mập quá",
+      "map qua",
+      "bụng to",
+      "bung to",
+      "mỡ bụng",
+      "mo bung",
+      "mỡ nội tạng",
+      "mo noi tang",
+      "giảm mỡ",
+      "giam mo"
+    ],
+    "preferred_combos": [
+      "COMBO THỪA CÂN - BÉO PHÌ",
+      "COMBO  GIẢM MỠ NỘI TẠNG",
+      "THẢI ĐỘC - GIẢM MỠ - NGỪA UNG THƯ"
+    ]
+  },
+  {
+    "intent": "sleep",
+    "title": "Mất ngủ, căng thẳng, trầm cảm nhẹ",
+    "priority": 50,
+    "keywords": [
+      "mất ngủ",
+      "mat ngu",
+      "khó ngủ",
+      "kho ngu",
+      "ngủ không sâu",
+      "ngu khong sau",
+      "trằn trọc",
+      "tran troc",
+      "căng thẳng",
+      "cang thang",
+      "stress",
+      "trầm cảm",
+      "tram cam"
+    ],
+    "preferred_combos": [
+      "COMBO GIẢM MẤT NGỦ - TRẦM CẢM"
+    ]
+  },
+  {
+    "intent": "bones_joints",
+    "title": "Cơ xương khớp, đau nhức",
+    "priority": 45,
+    "keywords": [
+      "đau khớp",
+      "dau khop",
+      "đau gối",
+      "dau goi",
+      "thoái hóa khớp",
+      "thoai hoa khop",
+      "loãng xương",
+      "loang xuong",
+      "đau nhức xương",
+      "dau nhuc xuong"
+    ],
+    "preferred_combos": [
+      "COMBO CƠ - XƯƠNG - KHƠP"
     ]
   },
   {
     "intent": "beauty",
-    "title": "Da, tóc, vóc dáng",
-    "keywords": ["sáng da", "đẹp da", "mụn", "nám", "rụng tóc", "da xấu"],
+    "title": "Da, tóc, mắt, vóc dáng",
+    "priority": 40,
+    "keywords": [
+      "sáng da",
+      "sang da",
+      "đẹp da",
+      "dep da",
+      "nám",
+      "nam da",
+      "tàn nhang",
+      "tan nhang",
+      "mụn",
+      "mun",
+      "rụng tóc",
+      "rung toc",
+      "tóc yếu",
+      "toc yeu",
+      "khô mắt",
+      "kho mat",
+      "mỏi mắt",
+      "moi mat",
+      "thị lực kém",
+      "thi luc kem",
+      "eo thon",
+      "dáng đẹp",
+      "dang dep"
+    ],
     "preferred_combos": [
       "COMBO SÁNG DA - DÁNG ĐẸP - EO THON",
       "COMBO GIẢM RỤNG - KÍCH THÍCH MỌC TÓC",
       "COMBO CHO MẮT"
     ]
+  },
+  {
+    "intent": "immune_general",
+    "title": "Tăng đề kháng, mệt mỏi, phục hồi",
+    "priority": 35,
+    "keywords": [
+      "tăng đề kháng",
+      "tang de khang",
+      "sức đề kháng kém",
+      "suc de khang kem",
+      "hay ốm",
+      "hay om",
+      "mệt mỏi",
+      "met moi",
+      "suy nhược",
+      "suy nhuoc",
+      "phục hồi sau ốm",
+      "phuc hoi sau om"
+    ],
+    "preferred_combos": [
+      "COMBO HÔ HẤP - TRẺ EM",
+      "COMBO ĂN UỐNG KÉM - SUY DINH DƯỠNG",
+      "COMBO HỖ TRỢ UNG THƯ"
+    ]
+  },
+  {
+    "intent": "oncology_support",
+    "title": "Hỗ trợ ung thư, miễn dịch đặc biệt",
+    "priority": 35,
+    "keywords": [
+      "ung thư",
+      "ung thu",
+      "u bướu",
+      "u buou",
+      "hóa trị",
+      "hoa tri",
+      "xạ trị",
+      "xa tri",
+      "lupus",
+      "lupus ban đỏ",
+      "lupus ban do"
+    ],
+    "preferred_combos": [
+      "COMBO HỖ TRỢ UNG THƯ",
+      "COMBO LUPUS BAN ĐỎ "
+    ]
+  },
+  {
+    "intent": "skin_psoriasis",
+    "title": "Vảy nến, viêm da cơ địa",
+    "priority": 30,
+    "keywords": [
+      "vảy nến",
+      "vay nen",
+      "viêm da cơ địa",
+      "viem da co dia",
+      "chàm",
+      "cham da",
+      "da bong vảy",
+      "da bong vay"
+    ],
+    "preferred_combos": [
+      "COMBO VẢY NẾN-VIÊM DA CƠ ĐỊA"
+    ]
+  },
+  {
+    "intent": "thyroid",
+    "title": "Bướu cổ, tuyến giáp",
+    "priority": 30,
+    "keywords": [
+      "bướu cổ",
+      "buou co",
+      "tuyến giáp",
+      "tuyen giap",
+      "cường giáp",
+      "cuong giap",
+      "suy giáp",
+      "suy giap"
+    ],
+    "preferred_combos": [
+      "COMBO BƯỚU CỔ"
+    ]
+  },
+  {
+    "intent": "gyn_female",
+    "title": "Viêm nhiễm phụ khoa nữ",
+    "priority": 25,
+    "keywords": [
+      "viêm phụ khoa",
+      "viem phu khoa",
+      "huyết trắng",
+      "huyet trang",
+      "ngứa vùng kín",
+      "ngua vung kin",
+      "viêm âm đạo",
+      "viem am dao"
+    ],
+    "preferred_combos": [
+      "COMBO  VIÊM NHIỄM PHỤ KHOA NỮ"
+    ]
   }
 ]
-
