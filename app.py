@@ -33,14 +33,12 @@ SYMPTOM_RULES   = load_json(SYMPTOMS_PATH, [])
 FAQ_LIST        = load_json(FAQ_PATH, [])
 OBJECTION_LIST  = load_json(OBJECTIONS_PATH, [])
 
-
 def load_users_store():
     try:
         with open(USERS_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
-
 
 def save_users_store(store: dict):
     try:
@@ -49,10 +47,10 @@ def save_users_store(store: dict):
     except Exception as e:
         print("Lỗi lưu users_store.json:", e)
 
-
 USERS_STORE = load_users_store()
 
 # ========= LOG HỘI THOẠI =========
+
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 CONV_LOG_PATH = LOG_DIR / "conversations.log"
@@ -63,7 +61,6 @@ def get_now_iso():
         return datetime.now().isoformat(timespec="seconds")
     except Exception:
         return datetime.now().isoformat()
-
 
 def log_event(user_id: int, direction: str, text: str, extra: dict | None = None):
     """
@@ -84,7 +81,6 @@ def log_event(user_id: int, direction: str, text: str, extra: dict | None = None
     except Exception as e:
         print("Lỗi ghi log hội thoại:", e)
 
-
 # ========= HỒ SƠ NGƯỜI DÙNG (USER STORE) =========
 
 def get_or_create_user_profile(telegram_user_id: int, tg_user: dict) -> dict:
@@ -99,8 +95,8 @@ def get_or_create_user_profile(telegram_user_id: int, tg_user: dict) -> dict:
         "last_seen": get_now_iso(),
         "name": "",
         "username": "",
-        "main_needs": {},       # đếm số lần hỏi theo need: health/product/policy/other
-        "intents_count": {},    # đếm số lần theo intent
+        "main_needs": {},       # đếm số lần hỏi theo need
+        "intents_count": {},    # đếm theo intent
         "total_messages": 0,
         "notes": ""
     }
@@ -120,9 +116,7 @@ def get_or_create_user_profile(telegram_user_id: int, tg_user: dict) -> dict:
     USERS_STORE[uid] = profile
     return profile
 
-
 def touch_user_stats(profile: dict, need: str | None = None, intent: str | None = None):
-    """Cập nhật thống kê hành vi vào profile (không gọi AI)."""
     profile["total_messages"] = int(profile.get("total_messages") or 0) + 1
 
     if need:
@@ -135,9 +129,7 @@ def touch_user_stats(profile: dict, need: str | None = None, intent: str | None 
         intents[intent] = int(intents.get(intent) or 0) + 1
         profile["intents_count"] = intents
 
-    # Lưu lại xuống file
     save_users_store(USERS_STORE)
-
 
 # ========= TELEGRAM & OPENAI =========
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -151,17 +143,8 @@ if not OPENAI_API_KEY:
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-
 # ========= SESSION LƯU THEO CHAT =========
 SESSIONS = {}
-# SESSIONS[chat_id] = {
-#   "mode": "customer" | "tvv",
-#   "intent": str | None,
-#   "profile": { ... },
-#   "stage": "await_need" | "start" | "clarify" | "advise",
-#   "first_issue": str | None,
-#   "need": "health" | "product" | "policy" | "other"
-# }
 
 def get_session(chat_id: int) -> dict:
     s = SESSIONS.get(chat_id)
@@ -176,7 +159,6 @@ def get_session(chat_id: int) -> dict:
         }
         SESSIONS[chat_id] = s
     return s
-
 
 # ========= PROMPT HỆ THỐNG =========
 BASE_SYSTEM_PROMPT = (
@@ -193,7 +175,6 @@ TVV_SYSTEM_EXTRA = (
     "- Hãy trả lời như đang huấn luyện nội bộ: giải thích combo, gợi ý cách tư vấn, cách xử lý thắc mắc.\n"
 )
 
-
 # ========= LỜI CHÀO / XÁC NHẬN NHU CẦU =========
 
 def build_welcome_message() -> str:
@@ -201,24 +182,28 @@ def build_welcome_message() -> str:
         "Chào anh/chị 👋\n"
         "Em là trợ lý AI hỗ trợ tư vấn & chăm sóc sức khỏe bằng sản phẩm WELLLAB.\n\n"
         "Trước tiên, để em hỗ trợ ĐÚNG NHU CẦU, anh/chị cho em biết anh/chị quan tâm nhất đến:\n"
-        "• *Sức khỏe hiện tại*: đau/bệnh/triệu chứng đang gặp phải\n"
-        "• *Sản phẩm/combo*: muốn tìm hiểu công dụng, cách dùng, liệu trình\n"
-        "• *Chính sách*: mua hàng, giao hàng, thanh toán, đổi trả\n\n"
+        "- *Sức khỏe hiện tại*: đau/bệnh/triệu chứng đang gặp phải\n"
+        "- *Sản phẩm/combo*: muốn tìm hiểu công dụng, cách dùng, liệu trình\n"
+        "- *Chính sách*: mua hàng, giao hàng, thanh toán, đổi trả\n\n"
         "Anh/chị có thể mô tả ngắn gọn: *“Anh bị… muốn cải thiện…”* hoặc *“Anh muốn hỏi về combo…”* để em hỗ trợ ạ. 💚"
     )
-
+    
+def get_main_menu_keyboard():
+    return [
+        ["🩺 Tư vấn theo triệu chứng"],
+        ["🧴 Tư vấn theo combo / sản phẩm"],
+        ["📦 Hỏi chính sách mua hàng"]
+    ]
 
 # ========= NHẬN DIỆN INTENT & NEED =========
 
-INTENT_PRIORITY_DEFAULT = 10  # fallback
-
+INTENT_PRIORITY_DEFAULT = 10
 
 def get_intent_priority(intent: str) -> int:
     for rule in SYMPTOM_RULES:
         if rule.get("intent") == intent:
             return int(rule.get("priority", INTENT_PRIORITY_DEFAULT))
     return INTENT_PRIORITY_DEFAULT
-
 
 def detect_intent_from_text(text: str) -> str | None:
     """
@@ -251,7 +236,6 @@ def detect_intent_from_text(text: str) -> str | None:
 
     return best_intent
 
-
 def detect_need(text: str) -> str:
     """
     Xác định khách đang quan tâm chính là gì:
@@ -265,16 +249,16 @@ def detect_need(text: str) -> str:
     health_kws = [
         "đau ", "bị đau", "bệnh", "trị bệnh", "triệu chứng", "huyết áp", "tiểu đường",
         "mỡ máu", "gan", "thận", "da cơ địa", "vảy nến", "mất ngủ", "khó ngủ", "ho", "khó thở",
-        "viêm", "ngứa", "mụn"
+        "viêm", "ngứa", "mụn", "sức khỏe", "suc khoe"
     ]
     product_kws = [
-        "sản phẩm", "combo", "liệu trình", "loại nào", "dùng gì",
+        "sản phẩm", "san pham", "combo", "liệu trình", "lieu trinh", "loại nào", "dùng gì",
         "công dụng", "thành phần", "uống như thế nào", "cách dùng", "bao lâu",
         "giá bao nhiêu", "bao nhiêu tiền"
     ]
     policy_kws = [
-        "mua hàng", "đặt hàng", "mua ở đâu", "ship", "giao hàng",
-        "thanh toán", "chuyển khoản", "cod", "đổi trả", "bảo hành", "chính sách"
+        "mua hàng", "dat hang", "đặt hàng", "mua ở đâu", "ship", "giao hàng",
+        "thanh toán", "thanh toan", "chuyển khoản", "cod", "đổi trả", "bảo hành", "bao hanh", "chính sách"
     ]
 
     if any(kw in t for kw in health_kws):
@@ -284,7 +268,6 @@ def detect_need(text: str) -> str:
     if any(kw in t for kw in policy_kws):
         return "policy"
     return "other"
-
 
 # ========= XỬ LÝ TRƯỜNG HỢP “KHÔNG CÓ VẤN ĐỀ SỨC KHOẺ” =========
 
@@ -296,7 +279,6 @@ NO_HEALTH_PATTERNS = [
     "không sao", "ko sao", "k sao"
 ]
 
-
 def is_no_health_intent(text: str) -> bool:
     t = text.lower().strip()
     if t in ["không", "ko", "k", "khong"]:
@@ -305,7 +287,6 @@ def is_no_health_intent(text: str) -> bool:
         if t == p or t.startswith(p + " "):
             return True
     return False
-
 
 # ========= CHỌN COMBO TỪ INTENT =========
 
@@ -321,7 +302,6 @@ def choose_combo(intent: str | None) -> dict | None:
         if combo:
             return combo
     return None
-
 
 # ========= TRÍCH HỒ SƠ TỪ CÂU VĂN =========
 
@@ -348,7 +328,6 @@ def extract_profile(text: str) -> dict:
 
     return profile
 
-
 # ========= FAQ & OBJECTION MATCHING (KHÔNG GỌI AI) =========
 
 def match_keywords_any(text: str, keywords: list[str]) -> bool:
@@ -358,7 +337,6 @@ def match_keywords_any(text: str, keywords: list[str]) -> bool:
             return True
     return False
 
-
 def try_answer_faq(text: str) -> str | None:
     for item in FAQ_LIST:
         kws = item.get("keywords_any", [])
@@ -366,14 +344,12 @@ def try_answer_faq(text: str) -> str | None:
             return item.get("answer")
     return None
 
-
 def try_answer_objection(text: str) -> str | None:
     for item in OBJECTION_LIST:
         kws = item.get("keywords_any", [])
         if kws and match_keywords_any(text, kws):
             return item.get("answer")
     return None
-
 
 # ========= XÂY CONTEXT GỬI OPENAI =========
 
@@ -400,7 +376,6 @@ def build_combo_context(combo: dict | None) -> str:
             lines.append(f"{idx}. {p.get('name','')}: {p.get('text','')}")
     return "\n".join(lines)
 
-
 def build_profile_context(profile: dict) -> str:
     if not profile:
         return "Chưa có thêm thông tin cụ thể về tuổi, giới tính hay bệnh nền."
@@ -414,8 +389,7 @@ def build_profile_context(profile: dict) -> str:
     elif profile.get("has_chronic") is False:
         parts.append("Không có bệnh nền.")
     return " ".join(parts)
-
-
+    
 # ========= CÂU HỎI LÀM RÕ THEO INTENT =========
 
 CLARIFY_QUESTIONS = {
@@ -455,7 +429,6 @@ CLARIFY_QUESTIONS = {
         "- Vùng da bị ở tay, chân, thân mình hay lan rộng khắp người?\n"
         "- Anh/chị đã từng dùng thuốc bôi/uống của bác sĩ da liễu chưa, và có bệnh nền dị ứng nào không?"
     ),
-    # fallback chung cho các intent khác
     "default": (
         "Để em hiểu rõ hơn và tư vấn đúng, anh/chị cho em biết thêm:\n"
         "- Triệu chứng chính anh/chị đang gặp là gì và kéo dài bao lâu rồi?\n"
@@ -464,13 +437,10 @@ CLARIFY_QUESTIONS = {
     )
 }
 
-
 def get_clarify_question(intent: str | None) -> str:
     if not intent:
         return CLARIFY_QUESTIONS["default"]
     return CLARIFY_QUESTIONS.get(intent, CLARIFY_QUESTIONS["default"])
-
-
 # ========= GỌI OPENAI =========
 
 def call_openai_for_answer(user_text: str, session: dict, combo: dict | None) -> str:
@@ -509,7 +479,6 @@ def call_openai_for_answer(user_text: str, session: dict, combo: dict | None) ->
         print("Lỗi gọi OpenAI:", e)
         return "Hiện hệ thống AI đang bận, anh/chị vui lòng thử lại sau một chút nhé."
 
-
 # ========= XỬ LÝ CÂU CHÀO ĐƠN GIẢN =========
 
 def is_simple_greeting(text: str) -> bool:
@@ -517,35 +486,42 @@ def is_simple_greeting(text: str) -> bool:
     simple = ["chào", "chào em", "hi", "hello", "alo", "chao", "chao em"]
     return any(t.startswith(s) or t == s for s in simple)
 
-
 def greeting_reply_short() -> str:
     return "Em chào anh/chị 👋 Anh/chị cứ tiếp tục chia sẻ nhu cầu hoặc câu hỏi của mình, em luôn sẵn sàng lắng nghe ạ. 😊"
 
-
 # ========= HÀM GỬI TIN =========
 
-def send_message(chat_id: int, text: str):
-    """Gửi tin nhắn về Telegram + ghi log bot."""
+def send_message(chat_id: int, text: str, keyboard=None):
     try:
         log_event(chat_id, "bot", text, extra={"source": "bot_reply"})
     except Exception as e:
         print("Lỗi log bot:", e)
 
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+    if keyboard:
+        payload["reply_markup"] = {
+            "keyboard": keyboard,
+            "resize_keyboard": True,
+            "one_time_keyboard": False
+        }
+
     try:
         requests.post(
             f"{TELEGRAM_API_URL}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+            json=payload
         )
     except Exception as e:
         print("Lỗi gửi message về Telegram:", e)
-
 
 # ========= ROUTES =========
 
 @app.route("/", methods=["GET"])
 def index():
     return "Bot is running.", 200
-
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -560,12 +536,10 @@ def webhook():
     text = message.get("text") or ""
     text_stripped = text.strip()
 
-    # Lấy user_id & hồ sơ người dùng
     tg_user = message.get("from") or {}
-    user_id = tg_user.get("id", chat_id)  # thường giống nhau trong chat riêng
+    user_id = tg_user.get("id", chat_id)
     profile = get_or_create_user_profile(user_id, tg_user)
 
-    # Ghi log tin nhắn của khách
     log_event(
         user_id,
         "user",
@@ -576,7 +550,8 @@ def webhook():
     session = get_session(chat_id)
 
     # ----- LỆNH CƠ BẢN -----
-    if text_stripped.startswith("/start"):
+
+   if text_stripped.startswith("/start"):
         session["mode"] = "customer"
         session["intent"] = None
         session["profile"] = {}
@@ -584,27 +559,72 @@ def webhook():
         session["first_issue"] = None
         session["need"] = None
 
-        send_message(chat_id, build_welcome_message())
+        send_message(chat_id, build_welcome_message(), keyboard=get_main_menu_keyboard())
         return "ok", 200
 
     if text_stripped.lower() == "/tvv":
         session["mode"] = "tvv"
         send_message(
             chat_id,
-            "Đã chuyển sang *chế độ TƯ VẤN VIÊN*. Anh/chị có thể hỏi về combo, sản phẩm hoặc cách tư vấn cho khách."
+            "Đã chuyển sang *chế độ TƯ VẤN VIÊN*. Anh/chị có thể hỏi về combo, sản phẩm hoặc cách tư vấn cho khách.",
+            keyboard=get_main_menu_keyboard()
         )
         return "ok", 200
 
     if text_stripped.lower() == "/kh":
         session["mode"] = "customer"
-        send_message(chat_id, "Đã chuyển về *chế độ tư vấn khách hàng*.")
+        send_message(chat_id, "Đã chuyển về *chế độ tư vấn khách hàng*.", keyboard=get_main_menu_keyboard())
+        return "ok", 200
+        
+    # ----- XỬ LÝ MENU NHANH -----
+
+    if "Tư vấn theo triệu chứng" in text_stripped:
+        session["need"] = "health"
+        session["stage"] = "start"
+        session["intent"] = None
+        session["first_issue"] = None
+        ask = (
+            "Dạ, anh/chị giúp em mô tả *triệu chứng hoặc vấn đề sức khỏe chính* mình đang gặp phải nhé:\n"
+            "- Đau/khó chịu ở đâu? kéo dài bao lâu rồi?\n"
+            "- Anh/chị bao nhiêu tuổi, có bệnh nền/đang dùng thuốc gì không?\n"
+            "- Mục tiêu là giảm triệu chứng, phòng tái phát hay nâng sức khỏe tổng thể?"
+        )
+        send_message(chat_id, ask)
+        touch_user_stats(profile, need="health", intent=None)
+        return "ok", 200
+
+    if "Tư vấn theo combo / sản phẩm" in text_stripped:
+        session["need"] = "product"
+        session["stage"] = "start"
+        session["intent"] = None
+        session["first_issue"] = None
+        ask = (
+            "Dạ, anh/chị muốn tìm hiểu về *combo hoặc sản phẩm* nào của WELLLAB ạ?\n"
+            "Anh/chị có thể gửi *tên combo, mã combo* hoặc mục tiêu chính (ví dụ: giảm mỡ, hỗ trợ gan, viêm da cơ địa...)."
+        )
+        send_message(chat_id, ask)
+        touch_user_stats(profile, need="product", intent=None)
+        return "ok", 200
+
+    if "Hỏi chính sách mua hàng" in text_stripped:
+        session["need"] = "policy"
+        session["stage"] = "start"
+        session["intent"] = None
+        session["first_issue"] = None
+        ask = (
+            "Dạ, anh/chị muốn hỏi rõ hơn về *mua hàng, giao hàng hay thanh toán* ạ?\n"
+            "Anh/chị cứ hỏi cụ thể: ví dụ *phí ship*, *thời gian giao*, *hình thức thanh toán*, *đổi trả*..."
+        )
+        send_message(chat_id, ask)
+        touch_user_stats(profile, need="policy", intent=None)
         return "ok", 200
 
     # ----- CÂU CHÀO ĐƠN GIẢN → XÁC NHẬN NHU CẦU -----
-    if is_simple_greeting(text_stripped):
+
+     if is_simple_greeting(text_stripped):
         if not session.get("need"):
             session["stage"] = "await_need"
-            send_message(chat_id, build_welcome_message())
+            send_message(chat_id, build_welcome_message(), keyboard=get_main_menu_keyboard())
         else:
             send_message(chat_id, greeting_reply_short())
         return "ok", 200
@@ -619,7 +639,7 @@ def webhook():
         reply = (
             "Dạ vâng anh/chị 😊\n"
             "Nếu hiện tại anh/chị *không có vấn đề sức khỏe cụ thể*, em vẫn có thể hỗ trợ:\n"
-            "- Gợi ý các combo/ sản phẩm chăm sóc sức khỏe tổng thể, phòng ngừa.\n"
+            "- Gợi ý các combo/sản phẩm chăm sóc sức khỏe tổng thể, phòng ngừa.\n"
             "- Giải đáp thắc mắc về thành phần, cách dùng, liệu trình WELLLAB.\n"
             "- Thông tin về chính sách mua hàng, giao hàng, thanh toán.\n\n"
             "Anh/chị muốn *tìm hiểu sản phẩm*, *xây dựng liệu trình dự phòng* hay *hỏi về chính sách* ạ?"
@@ -628,12 +648,12 @@ def webhook():
         touch_user_stats(profile, need="other", intent=None)
         return "ok", 200
 
-    # ----- CẬP NHẬT PROFILE (KHÔNG DÙNG AI) -----
+    # ----- CẬP NHẬT PROFILE CƠ BẢN -----
     prof_update = extract_profile(text_stripped)
     if prof_update:
         session["profile"] = {**session.get("profile", {}), **prof_update}
 
-    # ----- THỬ TRẢ LỜI FAQ (không tốn token) -----
+    # ----- FAQ / OBJECTIONS (KHÔNG TỐN TOKEN) -----
     faq_answer = try_answer_faq(text_stripped)
     if faq_answer:
         send_message(chat_id, faq_answer)
@@ -642,7 +662,6 @@ def webhook():
         touch_user_stats(profile, need=need_auto, intent=None)
         return "ok", 200
 
-    # ----- THỬ XỬ LÝ TỪ CHỐI (không tốn token) -----
     obj_answer = try_answer_objection(text_stripped)
     if obj_answer:
         send_message(chat_id, obj_answer)
@@ -653,45 +672,37 @@ def webhook():
 
      # ====== XÁC ĐỊNH NHU CẦU CHÍNH (NEED) ======
     lower = text_stripped.lower()
-
-    # 0. ƯU TIÊN NHẬN DIỆN RÕ RÀNG KHI KHÁCH NÓI THẲNG
     explicit_need = None
 
-    # Khách nói rõ: hỏi về sản phẩm / combo / liệu trình
     if any(kw in lower for kw in ["sản phẩm", "san pham", "combo", "liệu trình", "lieu trinh"]):
         explicit_need = "product"
 
-    # Khách nói rõ: hỏi về mua hàng / chính sách / giao hàng / thanh toán
     if any(kw in lower for kw in [
         "chính sách", "mua hàng", "dat hang", "đặt hàng", "ship", "giao hàng",
         "thanh toán", "thanh toan", "đổi trả", "doi tra", "bảo hành", "bao hanh"
     ]):
         explicit_need = "policy"
 
-    # Khách nói rõ: tình trạng sức khỏe / đau / bệnh / triệu chứng
     if any(kw in lower for kw in [
         "sức khỏe", "suc khoe", "đau ", "bị đau", "benh", "bệnh", "triệu chứng",
         "huyết áp", "tieu duong", "tiểu đường", "mỡ máu", "gan", "thận", "da cơ địa",
         "vảy nến", "mat ngu", "mất ngủ", "ho", "khó thở", "kho tho", "viem"
     ]):
-        explicit_need = explicit_need or "health"  # nếu trước đó chưa gán
+        explicit_need = explicit_need or "health"
 
-    # Nếu khách đã nói rất rõ → dùng explicit_need
     if explicit_need:
         session["need"] = explicit_need
         if session.get("stage") == "await_need":
             session["stage"] = "start"
-    # Nếu chưa có nhu cầu nào → dùng bộ detect_need chung
     elif not session.get("need") or session.get("stage") == "await_need":
         session["need"] = detect_need(text_stripped)
         session["stage"] = "start"
 
     need = session.get("need") or "other"
 
+  # ====== BRANCH THEO NHU CẦU ======
 
-    # ====== BRANCH THEO NHU CẦU ======
-
-    # 1. Nhu cầu CHÍNH SÁCH / MUA HÀNG
+    # 1. CHÍNH SÁCH / MUA HÀNG
     if need == "policy":
         faq_answer = try_answer_faq(text_stripped)
         if faq_answer:
@@ -711,32 +722,28 @@ def webhook():
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
-    # 2. Nhu cầu THÔNG TIN SẢN PHẨM (chưa rõ bệnh cụ thể)
+    # 2. THÔNG TIN SẢN PHẨM
     if need == "product" and not detect_intent_from_text(text_stripped):
         ask = (
             "Dạ, anh/chị muốn tìm hiểu về *sản phẩm/combo* nào của WELLLAB ạ?\n"
-            "Anh/chị có thể gửi *tên combo*, *mã số* trên tài liệu hoặc *mục tiêu chính* "
-            "(ví dụ: giảm mỡ, hỗ trợ gan, viêm da cơ địa...)."
+            "Anh/chị có thể gửi *tên combo, mã combo* hoặc mục tiêu chính (ví dụ: giảm mỡ, hỗ trợ gan, viêm da cơ địa...)."
         )
         send_message(chat_id, ask)
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
-    # 3. NEED = OTHER (chưa rõ, không nói về bệnh/sản phẩm/chính sách)
+    # 3. OTHER (chưa rõ)
     if need == "other" and not detect_intent_from_text(text_stripped):
         reply = (
             "Để em hỗ trợ đúng hơn, anh/chị cho em biết thêm một chút ạ:\n"
             "- Anh/chị đang muốn *tìm giải pháp cho vấn đề sức khỏe*, *tìm hiểu sản phẩm* hay *hỏi về chính sách mua hàng*?\n"
-            "- Nếu có triệu chứng hoặc mục tiêu sức khỏe cụ thể (ví dụ: mất ngủ, viêm da, huyết áp...), "
-            "anh/chị mô tả giúp em nhé."
+            "- Nếu có triệu chứng hoặc mục tiêu sức khỏe cụ thể (ví dụ: mất ngủ, viêm da, huyết áp...), anh/chị mô tả giúp em nhé."
         )
         send_message(chat_id, reply)
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
-    # ====== TỪ ĐÂY TRỞ ĐI: COI LÀ NHU CẦU SỨC KHỎE (HEALTH) ======
-
-    # 1. Cập nhật / phát hiện intent mới
+    # ====== FLOW SỨC KHOẺ ======
     new_intent = detect_intent_from_text(text_stripped)
     if new_intent:
         session["intent"] = new_intent
@@ -744,12 +751,10 @@ def webhook():
     intent = session.get("intent")
     stage = session.get("stage", "start")
 
-    # Cập nhật thống kê sau khi đã có need & (có thể) intent
     touch_user_stats(profile, need=need, intent=intent)
-
     is_health_need = (need == "health")
 
-    # 🔴 2. ƯU TIÊN XỬ LÝ KHI ĐANG Ở GIAI ĐOẠN CLARIFY
+    # 1. ĐANG CLARIFY -> coi đây là thông tin bổ sung, tư vấn luôn
     if stage == "clarify":
         issue = session.get("first_issue") or ""
         if not issue:
@@ -767,7 +772,7 @@ def webhook():
         send_message(chat_id, reply)
         return "ok", 200
 
-    # 🔵 3. Nếu CHƯA có intent rõ ràng (và chưa vào clarify lần nào)
+    # 2. CHƯA CÓ INTENT RÕ
     if not intent:
         if is_health_need:
             question = get_clarify_question(None)
@@ -783,7 +788,7 @@ def webhook():
             send_message(chat_id, reply)
         return "ok", 200
 
-    # 🔶 4. Nếu có intent nhưng đang ở giai đoạn START
+    # 3. CÓ INTENT, ĐANG Ở START
     if stage in ("start", None):
         session["first_issue"] = text_stripped
         if is_health_need:
@@ -797,20 +802,20 @@ def webhook():
             send_message(chat_id, reply)
         return "ok", 200
 
-    # 🔷 5. Nếu đã ở giai đoạn ADVISE -> câu hỏi bổ sung
+    # 4. GIAI ĐOẠN ADVISE -> câu hỏi bổ sung
     if stage == "advise":
         combo = choose_combo(intent)
         reply = call_openai_for_answer(text_stripped, session, combo)
         send_message(chat_id, reply)
         return "ok", 200
 
-    # Fallback an toàn
+    # Fallback
     combo = choose_combo(intent)
     reply = call_openai_for_answer(text_stripped, session, combo)
     send_message(chat_id, reply)
     return "ok", 200
 
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
 
