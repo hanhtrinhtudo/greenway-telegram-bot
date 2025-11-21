@@ -651,12 +651,43 @@ def webhook():
         touch_user_stats(profile, need=need_auto, intent=None)
         return "ok", 200
 
-    # ====== XÁC ĐỊNH NHU CẦU CHÍNH (NEED) ======
-    if not session.get("need") or session.get("stage") == "await_need":
+     # ====== XÁC ĐỊNH NHU CẦU CHÍNH (NEED) ======
+    lower = text_stripped.lower()
+
+    # 0. ƯU TIÊN NHẬN DIỆN RÕ RÀNG KHI KHÁCH NÓI THẲNG
+    explicit_need = None
+
+    # Khách nói rõ: hỏi về sản phẩm / combo / liệu trình
+    if any(kw in lower for kw in ["sản phẩm", "san pham", "combo", "liệu trình", "lieu trinh"]):
+        explicit_need = "product"
+
+    # Khách nói rõ: hỏi về mua hàng / chính sách / giao hàng / thanh toán
+    if any(kw in lower for kw in [
+        "chính sách", "mua hàng", "dat hang", "đặt hàng", "ship", "giao hàng",
+        "thanh toán", "thanh toan", "đổi trả", "doi tra", "bảo hành", "bao hanh"
+    ]):
+        explicit_need = "policy"
+
+    # Khách nói rõ: tình trạng sức khỏe / đau / bệnh / triệu chứng
+    if any(kw in lower for kw in [
+        "sức khỏe", "suc khoe", "đau ", "bị đau", "benh", "bệnh", "triệu chứng",
+        "huyết áp", "tieu duong", "tiểu đường", "mỡ máu", "gan", "thận", "da cơ địa",
+        "vảy nến", "mat ngu", "mất ngủ", "ho", "khó thở", "kho tho", "viem"
+    ]):
+        explicit_need = explicit_need or "health"  # nếu trước đó chưa gán
+
+    # Nếu khách đã nói rất rõ → dùng explicit_need
+    if explicit_need:
+        session["need"] = explicit_need
+        if session.get("stage") == "await_need":
+            session["stage"] = "start"
+    # Nếu chưa có nhu cầu nào → dùng bộ detect_need chung
+    elif not session.get("need") or session.get("stage") == "await_need":
         session["need"] = detect_need(text_stripped)
         session["stage"] = "start"
 
     need = session.get("need") or "other"
+
 
     # ====== BRANCH THEO NHU CẦU ======
 
@@ -782,3 +813,4 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
