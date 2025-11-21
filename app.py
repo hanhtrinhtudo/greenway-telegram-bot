@@ -33,6 +33,46 @@ SYMPTOM_RULES   = load_json(SYMPTOMS_PATH, [])
 FAQ_LIST        = load_json(FAQ_PATH, [])
 OBJECTION_LIST  = load_json(OBJECTIONS_PATH, [])
 
+import unicodedata
+
+def normalize_text(s: str) -> str:
+    """Chuẩn hoá: bỏ dấu, đưa về lower để so khớp tên combo linh hoạt hơn."""
+    if not s:
+        return ""
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return s.lower().strip()
+
+
+def search_combo_by_text(query: str, top_k: int = 1) -> list[dict]:
+    """
+    Tìm combo theo tên / alias trong welllab_catalog.json.
+    - So khớp không dấu, không phân biệt hoa thường.
+    - Trả về danh sách combo phù hợp nhất.
+    """
+    q = normalize_text(query)
+    if not q or not WELLLAB_CATALOG:
+        return []
+
+    results = []
+    for combo in WELLLAB_CATALOG:
+        name = normalize_text(combo.get("name", ""))
+        aliases = [normalize_text(a) for a in combo.get("aliases", [])]
+        haystack = " ".join([name] + aliases)
+
+        # Điểm = số từ trong query xuất hiện trong tên/alias
+        score = 0
+        for token in q.split():
+            if token and token in haystack:
+                score += 1
+
+        if score > 0:
+            results.append((score, combo))
+
+    results.sort(key=lambda x: x[0], reverse=True)
+    return [c for score, c in results[:top_k]]
+
+
 def load_users_store():
     try:
         with open(USERS_PATH, "r", encoding="utf-8") as f:
@@ -441,6 +481,7 @@ def get_clarify_question(intent: str | None) -> str:
     if not intent:
         return CLARIFY_QUESTIONS["default"]
     return CLARIFY_QUESTIONS.get(intent, CLARIFY_QUESTIONS["default"])
+    
 # ========= GỌI OPENAI =========
 
 def call_openai_for_answer(user_text: str, session: dict, combo: dict | None) -> str:
@@ -722,11 +763,36 @@ def webhook():
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
-    # 2. THÔNG TIN SẢN PHẨM
-    if need == "product" and not detect_intent_from_text(text_stripped):
+        # 2. THÔNG TIN SẢN PHẨM / COMBO
+        if need == "product":
+        # 2.1. Thử tìm combo trong catalog theo tên/mã mà khách vừa gõ
+        matches = search_combo_by_text(text_stripped, top_k=1)
+        if matches:
+            combo = matches[0]
+            # Gắn nhãn intent dạng "product_info" cho thống kê
+            if not session.get("intent"):
+                session["intent"] = "product_info"
+
+            reply = call_openai_for_answer(
+                (
+                    "Khách đang hỏi THẲNG về một combo/sản phẩm cụ thể trong danh mục WELLLAB.\n"
+                    "Hãy giải thích rõ ràng, dễ hiểu cho khách về combo này, dựa trên dữ liệu nội bộ.\n"
+                    "- Không bịa thêm combo mới.\n"
+                    "- Nhấn mạnh: hỗ trợ sức khoẻ, không phải thuốc chữa bệnh.\n\n"
+                    f"Câu hỏi gốc của khách: {text_stripped}"
+                ),
+                session,
+                combo
+            )
+            send_message(chat_id, reply)
+            touch_user_stats(profile, need=need, intent=session.get("intent"))
+            return "ok", 200
+
+        # 2.2. Nếu chưa nhận diện được combo -> hỏi lại nhẹ nhàng
         ask = (
-            "Dạ, anh/chị muốn tìm hiểu về *sản phẩm/combo* nào của WELLLAB ạ?\n"
-            "Anh/chị có thể gửi *tên combo, mã combo* hoặc mục tiêu chính (ví dụ: giảm mỡ, hỗ trợ gan, viêm da cơ địa...)."
+            "Dạ, để em tư vấn đúng hơn về *sản phẩm/combo*, anh/chị giúp em rõ thêm một chút ạ:\n"
+            "- Anh/chị có thể gửi *tên combo, mã combo trên tài liệu* hoặc *mục tiêu chính* (ví dụ: giảm mỡ, hỗ trợ gan, viêm da cơ địa...).\n"
+            "- Nếu anh/chị đang cầm tài liệu/brochure, có thể chụp màn hình tên combo gửi em cũng được ạ."
         )
         send_message(chat_id, ask)
         touch_user_stats(profile, need=need, intent=None)
@@ -817,5 +883,6 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
 
 
