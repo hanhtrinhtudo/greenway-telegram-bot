@@ -592,7 +592,7 @@ def webhook():
 
     # ----- LỆNH CƠ BẢN -----
 
-   if text_stripped.startswith("/start"):
+    if text_stripped.startswith("/start"):
         session["mode"] = "customer"
         session["intent"] = None
         session["profile"] = {}
@@ -660,9 +660,9 @@ def webhook():
         touch_user_stats(profile, need="policy", intent=None)
         return "ok", 200
 
-    # ----- CÂU CHÀO ĐƠN GIẢN → XÁC NHẬN NHU CẦU -----
+     # ----- CÂU CHÀO ĐƠN GIẢN → XÁC NHẬN NHU CẦU -----
 
-     if is_simple_greeting(text_stripped):
+    if is_simple_greeting(text_stripped):
         if not session.get("need"):
             session["stage"] = "await_need"
             send_message(chat_id, build_welcome_message(), keyboard=get_main_menu_keyboard())
@@ -763,13 +763,12 @@ def webhook():
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
-        # 2. THÔNG TIN SẢN PHẨM / COMBO
-        if need == "product":
+    # 2. THÔNG TIN SẢN PHẨM / COMBO
+    if need == "product":
         # 2.1. Thử tìm combo trong catalog theo tên/mã mà khách vừa gõ
         matches = search_combo_by_text(text_stripped, top_k=1)
         if matches:
             combo = matches[0]
-            # Gắn nhãn intent dạng "product_info" cho thống kê
             if not session.get("intent"):
                 session["intent"] = "product_info"
 
@@ -798,16 +797,16 @@ def webhook():
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
-    # 3. OTHER (chưa rõ)
-    if need == "other" and not detect_intent_from_text(text_stripped):
-        reply = (
-            "Để em hỗ trợ đúng hơn, anh/chị cho em biết thêm một chút ạ:\n"
-            "- Anh/chị đang muốn *tìm giải pháp cho vấn đề sức khỏe*, *tìm hiểu sản phẩm* hay *hỏi về chính sách mua hàng*?\n"
-            "- Nếu có triệu chứng hoặc mục tiêu sức khỏe cụ thể (ví dụ: mất ngủ, viêm da, huyết áp...), anh/chị mô tả giúp em nhé."
-        )
-        send_message(chat_id, reply)
-        touch_user_stats(profile, need=need, intent=None)
-        return "ok", 200
+        # 3. OTHER (chưa rõ)
+        if need == "other" and not detect_intent_from_text(text_stripped):
+            reply = (
+                "Để em hỗ trợ đúng hơn, anh/chị cho em biết thêm một chút ạ:\n"
+                "- Anh/chị đang muốn *tìm giải pháp cho vấn đề sức khỏe*, *tìm hiểu sản phẩm* hay *hỏi về chính sách mua hàng*?\n"
+                "- Nếu có triệu chứng hoặc mục tiêu sức khỏe cụ thể (ví dụ: mất ngủ, viêm da, huyết áp...), anh/chị mô tả giúp em nhé."
+            )
+            send_message(chat_id, reply)
+            touch_user_stats(profile, need=need, intent=None)
+            return "ok", 200
 
     # ====== FLOW SỨC KHOẺ ======
     new_intent = detect_intent_from_text(text_stripped)
@@ -883,6 +882,7 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
 
 
 
