@@ -17,6 +17,7 @@ DATA_DIR = BASE_DIR / "data"
 
 
 def load_json(path, default):
+    """Đọc file JSON, nếu lỗi trả về default để bot vẫn chạy được."""
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -188,12 +189,13 @@ def get_session(chat_id: int) -> dict:
     s = SESSIONS.get(chat_id)
     if not s:
         s = {
-            "mode": "customer",    # 'customer' | 'tvv'
+            "mode": "customer",
             "intent": None,
             "profile": {},
-            "stage": "await_need",  # await_need | start | clarify | advise | product_clarify
+            "stage": "await_need",
             "first_issue": None,
             "need": None,
+            "last_combo": None,  # combo đã tư vấn gần nhất
         }
         SESSIONS[chat_id] = s
     return s
@@ -201,22 +203,21 @@ def get_session(chat_id: int) -> dict:
 
 # ========= PROMPT HỆ THỐNG =========
 BASE_SYSTEM_PROMPT = (
-    "Bạn là trợ lý tư vấn sức khỏe & thực phẩm bảo vệ sức khỏe WELLLAB cho công ty Con Đường Xanh.\n\n"
-    "NGUYÊN TẮC BẮT BUỘC:\n"
-    "1. Luôn xưng 'em' và gọi khách là 'anh/chị'. Tuyệt đối không dùng 'tôi' hoặc 'bạn'.\n"
-    "2. Đặt sức khỏe và lợi ích lâu dài của khách cao hơn việc bán sản phẩm.\n"
-    "3. Không hù dọa, không hứa hẹn chữa khỏi bệnh, không mô tả sản phẩm như thuốc điều trị.\n"
-    "4. Chỉ dùng thông tin combo/sản phẩm trong dữ liệu nội bộ được cung cấp, không bịa thêm sản phẩm mới.\n"
-    "5. Luôn nhắc khách nên khám/bác sĩ khi triệu chứng nặng, kéo dài hoặc có bệnh nền phức tạp.\n\n"
-    "QUY TRÌNH TƯ VẤN 5 BƯỚC (cố gắng thể hiện trong mọi câu trả lời):\n"
-    "1. Đón chào & ghi nhận vấn đề: tóm tắt ngắn điều anh/chị chia sẻ, thể hiện sự thấu hiểu.\n"
-    "2. Giải thích nhẹ nhàng về khả năng nguyên nhân và hướng chăm sóc tổng quát, tránh thuật ngữ khó.\n"
-    "3. Gợi ý lối sống: ăn uống, sinh hoạt, vận động, giấc ngủ… đơn giản, dễ áp dụng.\n"
-    "4. Nếu phù hợp, gợi ý 1–2 combo/sản phẩm trong dữ liệu nội bộ, nêu công dụng chính & cách dùng cơ bản. "
-    "Nhấn mạnh đây là thực phẩm bảo vệ sức khỏe, TÁC DỤNG HỖ TRỢ.\n"
-    "5. Kết thúc bằng câu hỏi mở: hỏi xem thông tin đã rõ chưa, anh/chị còn băn khoăn gì, cần em hỗ trợ thêm gì.\n\n"
-    "Phong cách: thân thiện, khiêm tốn, ngắn gọn, ưu tiên gạch đầu dòng. Tránh nói kiểu 'Tôi xin giới thiệu', "
-    "hãy dùng 'Em giới thiệu anh/chị...', 'Combo này có thể hỗ trợ anh/chị...' .\n"
+    "Bạn là trợ lý tư vấn sức khỏe & thực phẩm bảo vệ sức khỏe WELLLAB cho công ty Con Đường Xanh.\n"
+    "MỤC TIÊU CHÍNH:\n"
+    "- Đặt sức khỏe và lợi ích DÀI HẠN của khách lên trước bán hàng.\n"
+    "- Luôn lắng nghe, hỏi lại cho rõ rồi mới gợi ý sản phẩm.\n"
+    "- Trả lời NGẮN GỌN, dễ hiểu, đúng trọng tâm câu hỏi hiện tại.\n"
+    "- Tuyệt đối không hù dọa, không hứa hẹn chữa khỏi bệnh, không nói quá công dụng.\n"
+    "- Chỉ dùng đúng các combo/sản phẩm có trong ngữ cảnh, không bịa thêm.\n"
+    "- Luôn nhắc đây là thực phẩm bảo vệ sức khỏe, không thay thế chẩn đoán/đơn thuốc; khi tình trạng nặng hoặc kéo dài phải gặp bác sĩ.\n\n"
+    "PHONG CÁCH TƯ VẤN:\n"
+    "- Bước 1: Ghi nhận vấn đề của khách, phản hồi bằng 1–2 câu đồng cảm, dùng xưng hô thân thiện (anh/chị).\n"
+    "- Bước 2: Hỏi lại 2–3 câu NGẮN để làm rõ (thời gian bị, mức độ, tuổi, bệnh nền, thuốc đang dùng...).\n"
+    "- Bước 3: Tóm tắt lại ngắn gọn rồi mới gợi ý combo/sản phẩm (nếu phù hợp).\n"
+    "- Khi khách CHỈ hỏi một thông tin cụ thể (ví dụ: link sản phẩm, giá, cách uống), hãy trả lời đúng ý, càng ngắn càng tốt, KHÔNG lặp lại toàn bộ mô tả combo.\n"
+    "- Mỗi lần trả lời tối đa khoảng 8–10 dòng chat, ưu tiên bullet gạch đầu dòng, tránh văn bản quá dài.\n"
+    "- Luôn kết thúc bằng một câu hỏi mở rất ngắn (ví dụ: 'Anh/chị thấy như vậy ổn không ạ?' hoặc 'Anh/chị cần em giải thích thêm phần nào không?').\n"
 )
 
 TVV_SYSTEM_EXTRA = (
@@ -612,6 +613,7 @@ def webhook():
         session["stage"] = "await_need"
         session["first_issue"] = None
         session["need"] = None
+        session["last_combo"] = None
 
         send_message(
             chat_id,
@@ -822,9 +824,38 @@ def webhook():
 
     # ====== NHÁNH SẢN PHẨM / COMBO ======
     if need == "product":
+        last_combo = session.get("last_combo")
+
+        # 1. Nếu khách hỏi link/website của "các sản phẩm này" và đã có combo gần nhất
+        if last_combo and any(
+            kw in lower for kw in ["link", "đường link", "duong link", "url", "website", "trang web"]
+        ):
+            lines: list[str] = [
+                f"Dạ, link các sản phẩm trong *{last_combo.get('name', '')}* đây ạ:"
+            ]
+            products = last_combo.get("products", [])
+            for idx, p in enumerate(products, start=1):
+                name = p.get("name", "")
+                code = p.get("code", "")
+                url_p = p.get("url", "")
+                line = f"{idx}. {name}"
+                if code:
+                    line += f" ({code})"
+                if url_p:
+                    line += f": {url_p}"
+                lines.append(line)
+            lines.append(
+                "\nAnh/chị cần em giải thích thêm về thành phần hoặc cách dùng của sản phẩm nào trong combo này không ạ?"
+            )
+            send_message(chat_id, "\n".join(lines))
+            touch_user_stats(profile, need=need, intent=session.get("intent"))
+            return "ok", 200
+
+        # 2. Khách gõ tên/mã combo cụ thể
         matches = search_combo_by_text(text_stripped, top_k=1)
         if matches:
             combo = matches[0]
+            session["last_combo"] = combo
             if not session.get("intent"):
                 session["intent"] = "product_info"
 
@@ -844,7 +875,7 @@ def webhook():
             touch_user_stats(profile, need=need, intent=session.get("intent"))
             return "ok", 200
 
-        # Chưa nhận diện được combo -> hỏi rõ thêm
+        # 3. Không nhận diện được combo -> hỏi rõ thêm
         session["stage"] = "product_clarify"
         ask = (
             "Để em tư vấn đúng sản phẩm nhất cho anh/chị, em cần hiểu rõ hơn một chút ạ:\n"
@@ -891,6 +922,7 @@ def webhook():
             )
 
             combo = choose_combo(intent)
+            session["last_combo"] = combo
             session["stage"] = "advise"
             reply = call_openai_for_answer(combined_user_text, session, combo)
             send_message(chat_id, reply)
@@ -916,12 +948,14 @@ def webhook():
         # 4. GIAI ĐOẠN ADVISE -> câu hỏi bổ sung
         if stage == "advise":
             combo = choose_combo(intent)
+            session["last_combo"] = combo
             reply = call_openai_for_answer(text_stripped, session, combo)
             send_message(chat_id, reply)
             return "ok", 200
 
         # Fallback trong health
         combo = choose_combo(intent)
+        session["last_combo"] = combo
         reply = call_openai_for_answer(text_stripped, session, combo)
         send_message(chat_id, reply)
         return "ok", 200
@@ -929,6 +963,7 @@ def webhook():
     # ====== FALLBACK CHUNG ======
     intent = session.get("intent")
     combo = choose_combo(intent)
+    session["last_combo"] = combo
     reply = call_openai_for_answer(text_stripped, session, combo)
     send_message(chat_id, reply)
     touch_user_stats(profile, need=need, intent=intent)
