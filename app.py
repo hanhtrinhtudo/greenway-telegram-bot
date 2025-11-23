@@ -26,17 +26,17 @@ def load_json(path, default):
 
 
 CATALOG_PATH = DATA_DIR / "welllab_catalog.json"      # danh mục combo
-PRODUCTS_PATH = DATA_DIR / "welllab_products.json"    # danh mục sản phẩm lẻ
 SYMPTOMS_PATH = DATA_DIR / "symptoms_mapping.json"    # intent -> combo
 FAQ_PATH = DATA_DIR / "faq.json"                      # câu hỏi thường gặp
 OBJECTIONS_PATH = DATA_DIR / "objections.json"        # từ chối phổ biến
 USERS_PATH = DATA_DIR / "users_store.json"            # hồ sơ người dùng
+PRODUCTS_PATH = DATA_DIR / "welllab_products.json"    # sản phẩm lẻ
 
 WELLLAB_CATALOG = load_json(CATALOG_PATH, [])
-WELLLAB_PRODUCTS = load_json(PRODUCTS_PATH, [])
 SYMPTOM_RULES = load_json(SYMPTOMS_PATH, [])
 FAQ_LIST = load_json(FAQ_PATH, [])
 OBJECTION_LIST = load_json(OBJECTIONS_PATH, [])
+PRODUCTS = load_json(PRODUCTS_PATH, [])
 
 
 # ========= TIỆN ÍCH CHUẨN HÓA =========
@@ -78,23 +78,29 @@ def search_combo_by_text(query: str, top_k: int = 1) -> list[dict]:
 
 def search_product_by_text(query: str, top_k: int = 1) -> list[dict]:
     """
-    Tìm sản phẩm lẻ theo tên / mã / alias trong welllab_products.json.
+    Tìm sản phẩm lẻ theo tên / code trong welllab_products.json.
+    Ưu tiên:
+    - So khớp code chính xác
+    - Sau đó so khớp tên không dấu.
     """
     q = normalize_text(query)
-    if not q or not WELLLAB_PRODUCTS:
+    if not q or not PRODUCTS:
         return []
 
     results: list[tuple[int, dict]] = []
-    for p in WELLLAB_PRODUCTS:
+    for p in PRODUCTS:
         name = normalize_text(p.get("name", ""))
         code = normalize_text(p.get("code", ""))
-        aliases = [normalize_text(a) for a in p.get("aliases", [])] if isinstance(p.get("aliases"), list) else []
-        haystack = " ".join([name, code] + aliases)
+        haystack = " ".join([name, code])
 
         score = 0
+        # ưu tiên khớp code nguyên
+        if code and code == q:
+            score += 5
         for token in q.split():
             if token and token in haystack:
                 score += 1
+
         if score > 0:
             results.append((score, p))
 
@@ -224,10 +230,24 @@ def get_session(chat_id: int) -> dict:
             "need": None,
             "last_combo": None,          # combo đã tư vấn gần nhất
             "last_product": None,        # sản phẩm lẻ đã tư vấn gần nhất
-            "clarify_rounds": 0,
+            "clarify_rounds": 0,         # số vòng hỏi thêm trong flow sức khỏe
         }
         SESSIONS[chat_id] = s
     return s
+
+
+def build_meta(session: dict, extra: dict | None = None) -> dict:
+    meta = {
+        "mode": session.get("mode"),
+        "need": session.get("need"),
+        "intent": session.get("intent"),
+        "stage": session.get("stage"),
+        "last_combo": (session.get("last_combo") or {}).get("name") if session.get("last_combo") else None,
+        "last_product": (session.get("last_product") or {}).get("name") if session.get("last_product") else None,
+    }
+    if extra:
+        meta.update(extra)
+    return meta
 
 
 # ========= PROMPT HỆ THỐNG =========
@@ -235,7 +255,7 @@ BASE_SYSTEM_PROMPT = (
     "Bạn là trợ lý tư vấn sức khỏe & thực phẩm bảo vệ sức khỏe WELLLAB cho công ty Con Đường Xanh.\n"
     "MỤC TIÊU CHÍNH:\n"
     "- Đặt sức khỏe và lợi ích DÀI HẠN của khách lên trước bán hàng.\n"
-    "- Luôn lắng nghe, hỏi lại cho rõ rồi mới gợi ý sản phẩm.\n"
+    "- Luôn lắng nghe, hỏi lại cho rõ rồi mới gợi ý sản phẩm/combo.\n"
     "- Trả lời NGẮN GỌN, dễ hiểu, đúng trọng tâm câu hỏi hiện tại.\n"
     "- Tuyệt đối không hù dọa, không hứa hẹn chữa khỏi bệnh, không nói quá công dụng.\n"
     "- Chỉ dùng đúng các combo/sản phẩm có trong ngữ cảnh, không bịa thêm.\n"
@@ -244,15 +264,15 @@ BASE_SYSTEM_PROMPT = (
     "- Bước 1: Ghi nhận vấn đề của khách, phản hồi bằng 1–2 câu đồng cảm, dùng xưng hô thân thiện (anh/chị).\n"
     "- Bước 2: Hỏi lại 2–3 câu NGẮN để làm rõ (thời gian bị, mức độ, tuổi, bệnh nền, thuốc đang dùng...).\n"
     "- Bước 3: Tóm tắt lại ngắn gọn rồi mới gợi ý combo/sản phẩm (nếu phù hợp).\n"
-    "- Khi khách CHỈ hỏi một thông tin cụ thể (ví dụ: link sản phẩm, giá, cách uống), hãy trả lời đúng ý, càng ngắn càng tốt, KHÔNG lặp lại toàn bộ mô tả combo.\n"
-    "- Mỗi lần trả lời tối đa khoảng 8–10 dòng chat, ưu tiên bullet gạch đầu dòng, tránh văn bản quá dài.\n"
+    "- Khi khách CHỈ hỏi một thông tin cụ thể (ví dụ: link sản phẩm, giá, cách uống), hãy trả lời đúng ý, càng ngắn càng tốt, không lặp lại toàn bộ mô tả combo.\n"
+    "- Mỗi lần trả lời tối đa khoảng 8–10 dòng chat, ưu tiên bullet, tránh văn bản quá dài.\n"
     "- Luôn kết thúc bằng một câu hỏi mở rất ngắn (ví dụ: 'Anh/chị thấy như vậy ổn không ạ?' hoặc 'Anh/chị cần em giải thích thêm phần nào không?').\n"
 )
 
 TVV_SYSTEM_EXTRA = (
     "Ngữ cảnh: Người đang trao đổi với bạn là *TƯ VẤN VIÊN* của công ty, không phải khách hàng cuối.\n"
-    "- Trả lời như đang huấn luyện nội bộ: giải thích mục tiêu từng combo, từng sản phẩm, cách đặt câu hỏi, cách xử lý thắc mắc.\n"
-    "- Luôn nhắc lại quy trình tư vấn 5 bước để tư vấn viên áp dụng với khách.\n"
+    "- Trả lời như đang huấn luyện nội bộ: giải thích mục tiêu từng combo, cách đặt câu hỏi, cách xử lý thắc mắc.\n"
+    "- Luôn nhắc lại quy trình tư vấn để tư vấn viên áp dụng với khách.\n"
 )
 
 
@@ -266,7 +286,7 @@ def build_welcome_message() -> str:
         "- *Sản phẩm/combo*: muốn tìm hiểu công dụng, cách dùng, liệu trình\n"
         "- *Chính sách*: mua hàng, giao hàng, thanh toán, đổi trả\n\n"
         "Anh/chị có thể chọn trên menu hoặc nhắn ngắn gọn: *“Anh bị… muốn cải thiện…”* "
-        "hoặc *“Anh muốn hỏi về combo/sản phẩm…”* để em hỗ trợ ạ. 💚"
+        "hoặc *“Anh muốn hỏi về sản phẩm/combo…”* để em hỗ trợ ạ. 💚"
     )
 
 
@@ -429,12 +449,7 @@ def try_answer_objection(text: str) -> str | None:
 # ========= CONTEXT GỬI OPENAI =========
 def build_combo_context(combo: dict | None) -> str:
     if not combo:
-        return (
-            "[CHÚ Ý CHO AI - COMBO]\n"
-            "- Hiện CHƯA xác định được combo cụ thể.\n"
-            "- Không được bịa tên combo mới.\n"
-            "- Chỉ nên tư vấn sức khỏe chung, lối sống và khuyến khích khách chia sẻ rõ hơn.\n"
-        )
+        return "Hiện chưa xác định được combo cụ thể."
 
     lines: list[str] = []
     lines.append(f"Combo: {combo.get('name', '')}")
@@ -456,41 +471,6 @@ def build_combo_context(combo: dict | None) -> str:
     return "\n".join(lines)
 
 
-def build_product_context(product: dict | None) -> str:
-    if not product:
-        return (
-            "[CHÚ Ý CHO AI - SẢN PHẨM LẺ]\n"
-            "- Hiện CHƯA xác định sản phẩm lẻ cụ thể.\n"
-            "- Không được bịa tên sản phẩm, mã sản phẩm hay giá.\n"
-        )
-
-    name = product.get("name", "")
-    code = product.get("code", "")
-    price = product.get("price", "")
-    ingredients = product.get("ingredients", "")
-    usage = product.get("usage", "")
-    benefits = product.get("benefits", "")
-    link = product.get("link", "")
-
-    parts = [f"Sản phẩm: {name}"]
-    if code:
-        parts.append(f"Mã: {code}")
-    if price:
-        parts.append(f"Giá tham khảo: {price}")
-
-    detail = []
-    if ingredients:
-        detail.append(f"[Thành phần]: {ingredients}")
-    if usage:
-        detail.append(f"[Cách dùng]: {usage}")
-    if benefits:
-        detail.append(f"[Lợi ích chính]: {benefits}")
-    if link:
-        detail.append(f"[Link đặt hàng/chi tiết]: {link}")
-
-    return "\n".join(parts + [""] + detail)
-
-
 def build_profile_context(profile: dict) -> str:
     if not profile:
         return "Chưa có thêm thông tin cụ thể về tuổi, giới tính hay bệnh nền."
@@ -504,6 +484,44 @@ def build_profile_context(profile: dict) -> str:
     elif profile.get("has_chronic") is False:
         parts.append("Không có bệnh nền.")
     return " ".join(parts)
+
+
+def build_product_answer(product: dict, user_text: str, mode: str = "customer") -> str:
+    """
+    Trả lời về 1 sản phẩm lẻ dựa trên welllab_products.json
+    KHÔNG gọi OpenAI để tránh bịa.
+    """
+    name = product.get("name", "")
+    code = product.get("code", "")
+    price = product.get("price", "")
+    ingredients = product.get("ingredients", "")
+    usage = product.get("usage", "")
+    benefits = product.get("benefits", "")
+    link = product.get("link", "")
+
+    lines: list[str] = []
+    if mode == "tvv":
+        lines.append(f"*{name}* (mã: {code}) dành cho tư vấn viên:\n")
+    else:
+        lines.append(f"*{name}* (mã: {code}) anh/chị nhé:\n")
+
+    if benefits:
+        lines.append(f"- *Công dụng chính*: {benefits}")
+    if ingredients:
+        lines.append(f"- *Thành phần nổi bật*: {ingredients}")
+    if usage:
+        lines.append(f"- *Cách dùng gợi ý*: {usage}")
+    if price:
+        lines.append(f"- *Giá tham khảo*: {price}")
+    if link:
+        lines.append(f"- *Link sản phẩm*: {link}")
+
+    lines.append(
+        "\nAnh/chị lưu ý đây là *thực phẩm bảo vệ sức khỏe*, không thay thế thuốc chữa bệnh."
+    )
+    lines.append("Anh/chị cần em gợi ý thêm sản phẩm hay liệu trình phù hợp với tình trạng hiện tại không ạ?")
+
+    return "\n".join(lines)
 
 
 # ========= CÂU HỎI LÀM RÕ =========
@@ -560,12 +578,7 @@ def get_clarify_question(intent: str | None) -> str:
 
 
 # ========= GỌI OPENAI =========
-def call_openai_for_answer(
-    user_text: str,
-    session: dict,
-    combo: dict | None = None,
-    product: dict | None = None,
-) -> str:
+def call_openai_for_answer(user_text: str, session: dict, combo: dict | None) -> str:
     mode = session.get("mode", "customer")
     intent = session.get("intent")
     profile = session.get("profile", {})
@@ -575,7 +588,6 @@ def call_openai_for_answer(
         sys_prompt += "\n" + TVV_SYSTEM_EXTRA
 
     combo_ctx = build_combo_context(combo)
-    product_ctx = build_product_context(product)
     profile_ctx = build_profile_context(profile)
     intent_text = f"Intent hiện tại: {intent or 'chưa rõ'}."
 
@@ -594,8 +606,6 @@ def call_openai_for_answer(
                         + profile_ctx
                         + "\n\n[COMBO LIÊN QUAN]:\n"
                         + combo_ctx
-                        + "\n\n[SẢN PHẨM LẺ LIÊN QUAN]:\n"
-                        + product_ctx
                     ),
                 },
                 {"role": "user", "content": user_text},
@@ -622,9 +632,12 @@ def greeting_reply_short() -> str:
 
 
 # ========= GỬI TIN =========
-def send_message(chat_id: int, text: str, keyboard=None):
+def send_message(chat_id: int, text: str, keyboard=None, meta: dict | None = None):
     try:
-        log_event(chat_id, "bot", text, extra={"source": "bot_reply"})
+        log_meta = {"source": "bot_reply"}
+        if meta:
+            log_meta.update(meta)
+        log_event(chat_id, "bot", text, extra=log_meta)
     except Exception as e:
         print("Lỗi log bot:", e)
 
@@ -692,11 +705,13 @@ def webhook():
         session["need"] = None
         session["last_combo"] = None
         session["last_product"] = None
+        session["clarify_rounds"] = 0
 
         send_message(
             chat_id,
             build_welcome_message(),
             keyboard=get_main_menu_keyboard(),
+            meta=build_meta(session, {"event": "start"}),
         )
         return "ok", 200
 
@@ -706,6 +721,7 @@ def webhook():
             chat_id,
             "Đã chuyển sang *chế độ TƯ VẤN VIÊN*. Anh/chị có thể hỏi về combo, sản phẩm hoặc cách tư vấn cho khách.",
             keyboard=get_main_menu_keyboard(),
+            meta=build_meta(session, {"event": "mode_tvv"}),
         )
         return "ok", 200
 
@@ -715,6 +731,7 @@ def webhook():
             chat_id,
             "Đã chuyển về *chế độ tư vấn khách hàng*.",
             keyboard=get_main_menu_keyboard(),
+            meta=build_meta(session, {"event": "mode_customer"}),
         )
         return "ok", 200
 
@@ -724,13 +741,14 @@ def webhook():
         session["stage"] = "start"
         session["intent"] = None
         session["first_issue"] = None
+        session["clarify_rounds"] = 0
         ask = (
             "Dạ, anh/chị giúp em mô tả *triệu chứng hoặc vấn đề sức khỏe chính* mình đang gặp ạ:\n"
             "- Đau/khó chịu ở đâu? kéo dài bao lâu rồi?\n"
             "- Anh/chị bao nhiêu tuổi, có bệnh nền/đang dùng thuốc gì không?\n"
             "- Mục tiêu là giảm triệu chứng, phòng tái phát hay nâng sức khỏe tổng thể?"
         )
-        send_message(chat_id, ask)
+        send_message(chat_id, ask, meta=build_meta(session, {"event": "menu_health"}))
         touch_user_stats(profile, need="health", intent=None)
         return "ok", 200
 
@@ -742,11 +760,10 @@ def webhook():
         ask = (
             "Dạ, để em tư vấn ĐÚNG sản phẩm nhất, anh/chị cho em biết thêm một chút ạ:\n"
             "- Anh/chị đang muốn cải thiện vấn đề sức khỏe nào (ví dụ: ngủ kém, đau dạ dày, gan yếu...)?\n"
-            "- Hay anh/chị chỉ muốn hiểu thông tin combo/sản phẩm để biết công dụng, thành phần ạ?\n"
-            "- Anh/chị đã có combo/sản phẩm nào của WELLLAB trong tay chưa hay đang tìm hiểu từ đầu?\n"
-            "Anh/chị có thể gửi *tên sản phẩm, mã sản phẩm hoặc tên combo* (nếu có), em sẽ gợi ý thật phù hợp ạ."
+            "- Hay anh/chị chỉ muốn *tìm hiểu thông tin* về một sản phẩm/combo cụ thể để tham khảo ạ?\n"
+            "Anh/chị có thể gửi *tên sản phẩm, mã sản phẩm* (hoặc tên combo, mã combo) để em hỗ trợ chi tiết hơn."
         )
-        send_message(chat_id, ask)
+        send_message(chat_id, ask, meta=build_meta(session, {"event": "menu_product"}))
         touch_user_stats(profile, need="product", intent=None)
         return "ok", 200
 
@@ -759,7 +776,7 @@ def webhook():
             "Dạ, anh/chị muốn hỏi rõ hơn về *mua hàng, giao hàng hay thanh toán* ạ?\n"
             "Anh/chị cứ hỏi cụ thể: ví dụ *phí ship*, *thời gian giao*, *hình thức thanh toán*, *đổi trả*..."
         )
-        send_message(chat_id, ask)
+        send_message(chat_id, ask, meta=build_meta(session, {"event": "menu_policy"}))
         touch_user_stats(profile, need="policy", intent=None)
         return "ok", 200
 
@@ -771,9 +788,14 @@ def webhook():
                 chat_id,
                 build_welcome_message(),
                 keyboard=get_main_menu_keyboard(),
+                meta=build_meta(session, {"event": "greeting_no_need"}),
             )
         else:
-            send_message(chat_id, greeting_reply_short())
+            send_message(
+                chat_id,
+                greeting_reply_short(),
+                meta=build_meta(session, {"event": "greeting_has_need"}),
+            )
         return "ok", 200
 
     # ----- NÓI “KHÔNG CÓ VẤN ĐỀ SỨC KHOẺ” -----
@@ -791,7 +813,7 @@ def webhook():
             "- Thông tin về chính sách mua hàng, giao hàng, thanh toán.\n\n"
             "Anh/chị muốn *tìm hiểu sản phẩm*, *xây dựng liệu trình dự phòng* hay *hỏi về chính sách* ạ?"
         )
-        send_message(chat_id, reply)
+        send_message(chat_id, reply, meta=build_meta(session, {"event": "no_health"}))
         touch_user_stats(profile, need="other", intent=None)
         return "ok", 200
 
@@ -803,7 +825,11 @@ def webhook():
     # ----- FAQ / OBJECTION (KHÔNG TỐN TOKEN) -----
     faq_answer = try_answer_faq(text_stripped)
     if faq_answer:
-        send_message(chat_id, faq_answer)
+        send_message(
+            chat_id,
+            faq_answer,
+            meta=build_meta(session, {"event": "faq_auto"}),
+        )
         need_auto = session.get("need") or detect_need(text_stripped)
         session["need"] = need_auto
         touch_user_stats(profile, need=need_auto, intent=None)
@@ -811,7 +837,11 @@ def webhook():
 
     obj_answer = try_answer_objection(text_stripped)
     if obj_answer:
-        send_message(chat_id, obj_answer)
+        send_message(
+            chat_id,
+            obj_answer,
+            meta=build_meta(session, {"event": "objection_auto"}),
+        )
         need_auto = session.get("need") or detect_need(text_stripped)
         session["need"] = need_auto
         touch_user_stats(profile, need=need_auto, intent=None)
@@ -821,7 +851,7 @@ def webhook():
     lower = text_stripped.lower()
     explicit_need = None
 
-    if any(kw in lower for kw in ["sản phẩm", "san pham", "combo", "liệu trình", "lieu trinh"]):
+    if any(kw in lower for kw in ["sản phẩm", "san pham", "mã sản phẩm", "ma san pham"]):
         explicit_need = "product"
 
     if any(
@@ -885,7 +915,11 @@ def webhook():
     if need == "policy":
         faq_answer = try_answer_faq(text_stripped)
         if faq_answer:
-            send_message(chat_id, faq_answer)
+            send_message(
+                chat_id,
+                faq_answer,
+                meta=build_meta(session, {"event": "policy_faq"}),
+            )
             touch_user_stats(profile, need=need, intent=None)
             return "ok", 200
 
@@ -896,111 +930,102 @@ def webhook():
             "Câu hỏi của khách: " + text_stripped,
             session,
             combo,
-            None,
         )
-        send_message(chat_id, reply)
+        send_message(
+            chat_id,
+            reply,
+            meta=build_meta(session, {"event": "policy_ai"}),
+        )
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
-    # ====== NHÁNH SẢN PHẨM / COMBO ======
+    # ====== NHÁNH SẢN PHẨM / COMBO (NEED = PRODUCT) ======
     if need == "product":
         last_combo = session.get("last_combo")
         last_product = session.get("last_product")
 
-        # 1. Nếu khách hỏi link/website của "sản phẩm này"
+        # 1. Nếu khách hỏi "link / đường link / website" cho sản phẩm đã nói trước đó
         if last_product and any(
             kw in lower for kw in ["link", "đường link", "duong link", "url", "website", "trang web"]
         ):
-            p = last_product
-            line = (
-                f"Dạ, link sản phẩm *{p.get('name', '')}*"
-                f"{' (' + p.get('code','') + ')' if p.get('code') else ''}: "
-                f"{p.get('link', 'hiện tại em chưa có link cụ thể trong hệ thống ạ.')}"
-            )
-            send_message(chat_id, line)
-            touch_user_stats(profile, need=need, intent=session.get("intent"))
-            return "ok", 200
-
-        # 2. Nếu khách hỏi link combo gần nhất
-        if last_combo and any(
-            kw in lower for kw in ["link", "đường link", "duong link", "url", "website", "trang web"]
-        ):
-            lines: list[str] = [
-                f"Dạ, link các sản phẩm trong *{last_combo.get('name', '')}* đây ạ:"
+            lp = last_product
+            lines = [
+                f"Dạ, *link sản phẩm {lp.get('name','')}* (mã {lp.get('code','')}) đây ạ:"
             ]
-            products = last_combo.get("products", [])
-            for idx, p in enumerate(products, start=1):
-                name = p.get("name", "")
-                code = p.get("code", "")
-                url_p = p.get("url", "")
-                line = f"{idx}. {name}"
-                if code:
-                    line += f" ({code})"
-                if url_p:
-                    line += f": {url_p}"
-                lines.append(line)
+            if lp.get("link"):
+                lines.append(lp["link"])
+            if lp.get("usage"):
+                lines.append(f"\n*Gợi ý cách dùng ngắn gọn*: {lp['usage']}")
             lines.append(
-                "\nAnh/chị cần em giải thích thêm về thành phần hoặc cách dùng của sản phẩm nào trong combo này không ạ?"
+                "\nAnh/chị cần em tư vấn thêm về việc kết hợp sản phẩm này với combo nào phù hợp không ạ?"
             )
-            send_message(chat_id, "\n".join(lines))
+            send_message(
+                chat_id,
+                "\n".join(lines),
+                meta=build_meta(session, {"event": "product_link_last_product"}),
+            )
             touch_user_stats(profile, need=need, intent=session.get("intent"))
             return "ok", 200
 
-        # 3. ƯU TIÊN TÌM SẢN PHẨM LẺ THEO TÊN/MÃ
-        prod_matches = search_product_by_text(text_stripped, top_k=1)
-        if prod_matches:
-            product = prod_matches[0]
+        # 2. Thử tìm sản phẩm lẻ theo tên/mã
+        product_matches = search_product_by_text(text_stripped, top_k=1)
+        if product_matches:
+            product = product_matches[0]
             session["last_product"] = product
-            # mode tvv → hiểu là đang học sản phẩm, không cần hỏi thêm bệnh
-            reply = call_openai_for_answer(
-                (
-                    "Khách đang hỏi về MỘT SẢN PHẨM LẺ trong danh mục WELLLAB.\n"
-                    "- Hãy giải thích rõ ràng, dễ hiểu về sản phẩm này dựa trên dữ liệu nội bộ.\n"
-                    "- Nếu khách là người dùng cuối: có thể hỏi nhẹ nhàng xem dùng cho vấn đề gì để tư vấn thêm.\n"
-                    "- Không bịa thêm sản phẩm mới, không tự ý gộp thành combo.\n\n"
-                    f"Câu hỏi gốc của khách: {text_stripped}"
-                ),
-                session,
-                combo=None,
-                product=product,
+            reply = build_product_answer(product, text_stripped, mode=session.get("mode", "customer"))
+            send_message(
+                chat_id,
+                reply,
+                meta=build_meta(session, {
+                    "event": "product_detail",
+                    "product_code": product.get("code"),
+                }),
             )
-            send_message(chat_id, reply)
-            touch_user_stats(profile, need=need, intent="product_single")
-            return "ok", 200
-
-        # 4. Không phải sản phẩm lẻ → thử nhận diện COMBO
-        matches = search_combo_by_text(text_stripped, top_k=1)
-        if matches:
-            combo = matches[0]
-            session["last_combo"] = combo
-            if not session.get("intent"):
-                session["intent"] = "product_combo"
-
-            reply = call_openai_for_answer(
-                (
-                    "Khách đang hỏi về một COMBO/BỘ SẢN PHẨM trong danh mục WELLLAB.\n"
-                    "Hãy giải thích rõ ràng, dễ hiểu cho khách về combo này, dựa trên dữ liệu nội bộ.\n"
-                    "- Không bịa thêm combo mới.\n"
-                    "- Nhấn mạnh: sản phẩm chỉ hỗ trợ sức khoẻ, không phải thuốc chữa bệnh.\n"
-                    "- Thực hiện tư vấn có TÂM theo quy trình 5 bước trong system prompt.\n\n"
-                    f"Câu hỏi gốc của khách: {text_stripped}"
-                ),
-                session,
-                combo=combo,
-                product=None,
-            )
-            send_message(chat_id, reply)
             touch_user_stats(profile, need=need, intent=session.get("intent"))
             return "ok", 200
 
-        # 5. Không nhận diện được gì → hỏi rõ thêm
+        # 3. Nếu khách nói rõ "combo/bộ" thì mới chuyển sang tìm combo
+        if any(kw in lower for kw in ["combo", "bộ ", "bo ", "liệu trình", "lieu trinh"]):
+            combo_matches = search_combo_by_text(text_stripped, top_k=1)
+            if combo_matches:
+                combo = combo_matches[0]
+                session["last_combo"] = combo
+                if not session.get("intent"):
+                    session["intent"] = "product_combo_info"
+
+                reply = call_openai_for_answer(
+                    (
+                        "Khách đang hỏi về một COMBO cụ thể trong danh mục WELLLAB.\n"
+                        "Hãy giải thích rõ ràng, dễ hiểu cho khách về combo này, dựa trên dữ liệu nội bộ.\n"
+                        "- Không bịa thêm combo mới.\n"
+                        "- Nhấn mạnh: sản phẩm chỉ hỗ trợ sức khoẻ, không phải thuốc chữa bệnh.\n"
+                        "- Thực hiện tư vấn có TÂM theo quy trình trong system prompt.\n\n"
+                        f"Câu hỏi gốc của khách: {text_stripped}"
+                    ),
+                    session,
+                    combo,
+                )
+                send_message(
+                    chat_id,
+                    reply,
+                    meta=build_meta(session, {"event": "product_combo_ai"}),
+                )
+                touch_user_stats(profile, need=need, intent=session.get("intent"))
+                return "ok", 200
+
+        # 4. Không nhận diện được sản phẩm hay combo rõ ràng -> hỏi lại
         session["stage"] = "product_clarify"
         ask = (
-            "Để em tư vấn đúng sản phẩm nhất cho anh/chị, em cần hiểu rõ hơn một chút ạ:\n"
-            "- Anh/chị đang muốn dùng sản phẩm cho vấn đề sức khỏe nào, hay chỉ muốn hiểu thông tin sản phẩm để tham khảo/tư vấn ạ?\n"
-            "- Anh/chị có thể cho em biết tên sản phẩm, mã sản phẩm hoặc mục tiêu chính (ví dụ: hỗ trợ giấc ngủ, tiêu hoá, gan...) không ạ?"
+            "Để em tư vấn đúng sản phẩm/combo nhất cho anh/chị, em cần hiểu rõ hơn một chút ạ:\n"
+            "- Anh/chị đang muốn *tìm hiểu thông tin* về sản phẩm nào (tên hoặc mã sản phẩm)?\n"
+            "- Hay anh/chị đang tìm giải pháp cho *vấn đề sức khỏe cụ thể* (mất ngủ, dạ dày, huyết áp...) để em gợi ý combo phù hợp?\n"
+            "Anh/chị nói rõ hơn giúp em, em sẽ tư vấn cho đúng mong muốn của mình ạ."
         )
-        send_message(chat_id, ask)
+        send_message(
+            chat_id,
+            ask,
+            meta=build_meta(session, {"event": "product_clarify_more"}),
+        )
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
@@ -1011,11 +1036,15 @@ def webhook():
             "- Anh/chị đang muốn *tìm giải pháp cho vấn đề sức khỏe*, *tìm hiểu sản phẩm* hay *hỏi về chính sách mua hàng*?\n"
             "- Nếu có triệu chứng hoặc mục tiêu sức khỏe cụ thể (ví dụ: mất ngủ, viêm da, huyết áp...), anh/chị mô tả giúp em nhé."
         )
-        send_message(chat_id, reply)
+        send_message(
+            chat_id,
+            reply,
+            meta=build_meta(session, {"event": "other_need_clarify"}),
+        )
         touch_user_stats(profile, need=need, intent=None)
         return "ok", 200
 
-    # ====== FLOW SỨC KHOẺ ======
+    # ====== FLOW SỨC KHOẺ (NEED = HEALTH) ======
     if need == "health":
         new_intent = detect_intent_from_text(text_stripped)
         if new_intent:
@@ -1026,7 +1055,7 @@ def webhook():
 
         touch_user_stats(profile, need=need, intent=intent)
 
-        # 1. ĐANG CLARIFY -> coi đây là thông tin bổ sung, tư vấn luôn
+        # 1. ĐANG CLARIFY -> coi đây là thông tin bổ sung, tư vấn luôn (chỉ lúc này mới được gợi combo)
         if stage == "clarify":
             issue = session.get("first_issue") or ""
             if not issue:
@@ -1041,76 +1070,74 @@ def webhook():
             combo = choose_combo(intent)
             session["last_combo"] = combo
             session["stage"] = "advise"
-            reply = call_openai_for_answer(combined_user_text, session, combo=combo, product=None)
-            send_message(chat_id, reply)
+            reply = call_openai_for_answer(combined_user_text, session, combo)
+            send_message(
+                chat_id,
+                reply,
+                meta=build_meta(session, {"event": "health_advise"}),
+            )
             return "ok", 200
 
-        # 2. CHƯA CÓ INTENT RÕ
+        # 2. CHƯA CÓ INTENT RÕ -> hỏi làm rõ, CHƯA gợi combo
         if not intent:
             question = get_clarify_question(None)
             session["stage"] = "clarify"
+            session["clarify_rounds"] = session.get("clarify_rounds", 0) + 1
             if not session.get("first_issue"):
                 session["first_issue"] = text_stripped
-            send_message(chat_id, question)
+            send_message(
+                chat_id,
+                question,
+                meta=build_meta(session, {"event": "health_first_clarify"}),
+            )
             return "ok", 200
 
-        # 3. CÓ INTENT, ĐANG Ở START
+        # 3. CÓ INTENT, ĐANG Ở START -> chuyển sang hỏi rõ thêm
         if stage in ("start", None):
             session["first_issue"] = text_stripped
             session["stage"] = "clarify"
+            session["clarify_rounds"] = session.get("clarify_rounds", 0) + 1
             question = get_clarify_question(intent)
-            send_message(chat_id, question)
+            send_message(
+                chat_id,
+                question,
+                meta=build_meta(session, {"event": "health_intent_clarify"}),
+            )
             return "ok", 200
 
-        # 4. GIAI ĐOẠN ADVISE -> câu hỏi bổ sung
+        # 4. GIAI ĐOẠN ADVISE -> câu hỏi bổ sung sau khi đã tư vấn combo
         if stage == "advise":
-            product_like = any(
-                kw in lower
-                for kw in ["sản phẩm", "san pham", "combo", "mua", "giá", "gia", "link"]
-            )
-
-            if product_like:
-                combo = session.get("last_combo") or choose_combo(intent)
-                if combo:
-                    session["last_combo"] = combo
-                    reply = call_openai_for_answer(
-                        (
-                            "Khách đang HỎI THÊM về combo/sản phẩm liên quan đến vấn đề sức khỏe đã trao đổi.\n"
-                            "Chỉ giải thích, làm rõ về combo này; không gợi ý sang combo khác.\n\n"
-                            f"Câu hỏi của khách: {text_stripped}"
-                        ),
-                        session,
-                        combo=combo,
-                        product=None,
-                    )
-                else:
-                    reply = (
-                        "Hiện tại em chưa xác định được *tên combo hoặc sản phẩm cụ thể* cho tình trạng của anh/chị.\n"
-                        "Anh/chị có thể cho em biết rõ mình đang muốn tìm hiểu combo/sản phẩm nào "
-                        "hoặc mục tiêu chính (ví dụ: hỗ trợ giấc ngủ, dạ dày, gan...) để em tư vấn đúng hơn ạ."
-                    )
-                send_message(chat_id, reply)
-                return "ok", 200
-
             combo = choose_combo(intent)
             session["last_combo"] = combo
-            reply = call_openai_for_answer(text_stripped, session, combo=combo, product=None)
-            send_message(chat_id, reply)
+            reply = call_openai_for_answer(text_stripped, session, combo)
+            send_message(
+                chat_id,
+                reply,
+                meta=build_meta(session, {"event": "health_followup"}),
+            )
             return "ok", 200
 
-        # Fallback trong health
+        # Fallback trong health (trường hợp hiếm)
         combo = choose_combo(intent)
         session["last_combo"] = combo
-        reply = call_openai_for_answer(text_stripped, session, combo=combo, product=None)
-        send_message(chat_id, reply)
+        reply = call_openai_for_answer(text_stripped, session, combo)
+        send_message(
+            chat_id,
+            reply,
+            meta=build_meta(session, {"event": "health_fallback"}),
+        )
         return "ok", 200
 
     # ====== FALLBACK CHUNG ======
     intent = session.get("intent")
     combo = choose_combo(intent)
     session["last_combo"] = combo
-    reply = call_openai_for_answer(text_stripped, session, combo=combo, product=None)
-    send_message(chat_id, reply)
+    reply = call_openai_for_answer(text_stripped, session, combo)
+    send_message(
+        chat_id,
+        reply,
+        meta=build_meta(session, {"event": "global_fallback"}),
+    )
     touch_user_stats(profile, need=need, intent=intent)
     return "ok", 200
 
